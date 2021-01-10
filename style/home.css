@@ -1,3 +1,27 @@
+header {
+  position: relative;
+  margin: 2rem auto;
+}
+
+header > img {
+  display: block;
+  image-rendering: auto;
+  width: 80%;
+  margin: 0 auto;
+  margin-bottom: 2rem;
+  transform: perspective(1200px) rotateX(30deg);
+}
+
+header > #splash {
+  position: absolute;
+  top: 95px;
+  right: 110px;
+  transform: rotate(-20deg);
+  font-size: 1.5rem;
+  color: #ff0;
+  animation: 0.4s cubic-bezier(0.4, 0, 1, 1) infinite alternate splash;
+}
+
 nav {
   display: grid;
   grid-auto-flow: row;
