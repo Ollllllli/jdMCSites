@@ -1,0 +1,72 @@
+@font-face {
+  font-family: "Minecraft";
+  src: url("../font/mc-regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Minecraft";
+  src: url("../font/mc-bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Minecraft";
+  src: url("../font/mc-italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Minecraft";
+  src: url("../font/mc-bolditalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@keyframes splash {
+  from { transform: scale(1) rotate(-20deg); }
+  to { transform: scale(1.1) rotate(-20deg); }
+}
+
+:root {
+  height: 100%;
+  image-rendering: optimizeSpeed;
+  image-rendering: pixelated;
+  font-family: Minecraft;
+  color: #eee;
+  font-size: 15px;
+  text-shadow: 0.1rem 0.1rem #555;
+}
+
+body {
+  width: 800px;
+  min-height: 100%;
+  margin: 0 auto;
+  background-color: #555;
+  background-image: url("../img/block/cobblestone.png");
+  background-blend-mode: multiply;
+  background-size: 10rem 10rem;
+  background-position: 50%;
+}
+
+header {
+  position: relative;
+  margin: 2rem;
+}
+
+header > img {
+  display: block;
+  image-rendering: auto;
+  width: 90%;
+  margin: 1rem auto;
+}
+
+header > #splash {
+  position: absolute;
+  top: 75%;
+  right: 15%;
+  transform: rotate(-20deg);
+  font-size: 1.5rem;
+  color: #ff0;
+  animation: 0.4s cubic-bezier(0.4, 0, 1, 1) infinite alternate splash;
+}
