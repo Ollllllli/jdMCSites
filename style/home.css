@@ -15,9 +15,9 @@ header > img {
 header > #splash {
   position: absolute;
   top: 95px;
-  right: 110px;
+  right: 50px;
   transform: rotate(-20deg);
-  font-size: 1.5rem;
+  font-size: 2rem;
   color: #ff0;
   animation: 0.4s cubic-bezier(0.4, 0, 1, 1) infinite alternate splash;
 }
