@@ -74,42 +74,12 @@ header > #splash {
   animation: 0.4s cubic-bezier(0.4, 0, 1, 1) infinite alternate splash;
 }
 
-nav {
-  display: grid;
-  grid-auto-flow: row;
-  margin: 0 auto;
-  width: min-content;
-}
-nav > a {
-  display: grid;
-  grid-template-columns: 4rem auto;
-  column-gap: 1rem;
-  margin: 0.5rem auto;
-  width: 100%;
-  color: white;
-  text-decoration: none;
-}
-nav > a:hover {
-  text-decoration: underline;
-  background-color: #222;
-}
-nav > a > img {
-  object-fit: contain;
-  width: 4rem;
-  height: 4rem;
-}
-nav > a > h2 {
-  margin: 0;
-  font-size: 2.5rem;
-  line-height: 4rem;
-}
-
 .style-toast {
   border-style: solid;
   background-color: #333;
   border-radius: 1.6rem;
-  border-width: 0.8rem;
-  border-image: url("../img/border-toast.png") 25%;
+  border-width: 1rem;
+  border-image: url("../img/border-toast.png") 37.5%;
   padding: 0.8rem;
 }
 
@@ -117,8 +87,8 @@ nav > a > h2 {
   border-style: solid;
   background-color: #201;
   border-radius: 1.6rem;
-  border-width: 0.8rem;
-  border-image: url("../img/border-info.png") 25%;
+  border-width: 1rem;
+  border-image: url("../img/border-info.png") 37.5%;
   padding: 0.8rem;
 }
 
