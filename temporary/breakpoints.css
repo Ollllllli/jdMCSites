@@ -1,0 +1,41 @@
+@media only screen and (max-width: 480px) {
+    :root {
+        --temp-color: red;
+        --o-titleFontSize: 72px;
+        --o-subtitleFontSize: 24px;
+    }
+}
+
+@media only screen and (min-width: 481px) and (max-width: 768px) {
+    :root {
+        --temp-color: orange;
+        --o-titleFontSize: 72px;
+        --o-subtitleFontSize: 24px;
+    }
+}
+
+@media only screen and (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --temp-color: yellow;
+        --o-titleFontSize: 64px;
+        --o-subtitleFontSize: 22px;
+    }
+}
+
+@media only screen and (min-width: 1025px) and (max-width: 1200px) {
+    :root {
+        --temp-color: green;
+        --o-titleFontSize: 72px;
+        --o-subtitleFontSize: 24px;
+    }
+}
+
+@media only screen and (min-width: 1201px) {
+    :root {
+        --temp-color: blue;
+        --o-titleFontSize: 95px;
+        --o-subtitleFontSize: 32px;
+        --o-largeButtonWidth: 285px;
+        --o-largeButtonHeight: 96px;
+    }
+}
