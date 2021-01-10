@@ -34,7 +34,7 @@ nav > a {
   column-gap: 1rem;
   margin: 0.5rem auto;
   width: 100%;
-  color: white;
+  color: #eee;
   text-decoration: none;
 }
 nav > a:hover {
