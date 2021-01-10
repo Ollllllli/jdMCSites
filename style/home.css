@@ -6,7 +6,7 @@ header {
 header > img {
   display: block;
   image-rendering: auto;
-  width: 80%;
+  width: 100%;
   margin: 0 auto;
   margin-bottom: 2rem;
   transform: perspective(1200px) rotateX(30deg);
