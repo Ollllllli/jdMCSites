@@ -1,14 +1,13 @@
 class StatsAPI {
     #apiURL = "https://jdapi.olllli.workers.dev/";
     constructor() {
-        this.ensureAllIsUpToDate()
+        //this.ensureAllIsUpToDate()
     }
 
     //Gets the data from the API
     async #getDataFromAPI(entrypoint) {
         const options = {
-            method: 'GET',
-            mode: 'cors'
+            method: 'GET'
         }
         const response = await fetch(this.#apiURL + String(entrypoint), options)
         if (response.status == 200) {
