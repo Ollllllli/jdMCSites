@@ -6,6 +6,24 @@
   <link href="./style/main.css" rel="stylesheet">
   <link href="./style/page-header.css" rel="stylesheet">
   <link href="./style/stats.css" rel="stylesheet">
+  <link href="./style/forms.css" rel="stylesheet">
+  <style>
+    table {
+      margin: auto;
+      border-spacing: 0 0.5rem;
+    }
+    tbody > tr > td:not(:last-child) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right-width: 0;
+    }
+    tbody > tr > td:not(:first-child) {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      border-left-width: 0;
+      text-align: right;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -15,7 +33,34 @@
       <h1>Statistics</h1>
     </div>
   </header>
-  <main></main>
+  <main>
+    <table style="font-size: 1.5rem;">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>
+            <div class="select-wrapper">
+              <select onfocus='this.size=this.children.length;' onblur='this.size=0;' onchange='this.size=1;this.blur();'>
+                <option>Time Played (hrs)</option>
+                <option>Diamonds Quarried</option>
+                <option>Ancient Debris Quarried</option>
+              </select>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="style-info">Mytanic</td>
+          <td class="style-info">600.00</td>
+        </tr>
+        <tr>
+          <td class="style-info"></td>
+          <td class="style-info"></td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
   <footer></footer>
 </body>
 </html>

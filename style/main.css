@@ -64,10 +64,9 @@ body {
   border-radius: 1.6rem;
   border-width: 1rem;
   border-image: url("../img/border-info.png") 37.5%;
-  padding: 0.8rem;
 }
 
-.toast {
+/* .toast {
   display: grid;
   grid-template-columns: 4rem auto;
   grid-template-rows: 2.5rem 1.5rem;
@@ -93,4 +92,4 @@ body {
   font-size: 1.5rem;
   line-height: 1.5rem;
   font-weight: normal;
-}
+} */

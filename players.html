@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>JDCraft - Profiles</title>
+  <title>JDCraft - Players</title>
   <meta charset="utf-8">
   <link href="./style/main.css" rel="stylesheet">
   <link href="./style/page-header.css" rel="stylesheet">
@@ -11,10 +11,16 @@
     <a href="./index.html"></a>
     <div class="style-toast">
       <img src="./img/item/totem_of_undying.png">
-      <h1>Profiles</h1>
+      <h1>Players</h1>
     </div>
   </header>
-  <main></main>
+  <main>
+    <select onfocus='this.size=3;' onblur='this.size=0;' onchange='this.blur();'>
+      <option>First Person</option>
+      <option>Third Person Back</option>
+      <option>Third Person Front</option>
+    </select>
+  </main>
   <footer></footer>
 </body>
 </html>

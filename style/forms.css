@@ -1,0 +1,51 @@
+.select-wrapper {
+  position: relative;
+  overflow: visible;
+  height: 3rem;
+  width: 20rem;
+  z-index: 10;
+}
+select {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-image: url("../img/border-button.png") 25%;
+  border-style: solid;
+  border-width: 0.4rem;
+  overflow: visible;
+  background-color: #bbb;
+  color: #333;
+  font-family: "Minecraft";
+  font-size: inherit;
+  padding: 0.1em;
+  /* position: absolute;
+  top: 0;
+  left: 0; */
+}
+select:hover {
+  border-image: url("../img/border-button-active.png") 25%;
+  background-color: #280;
+  color: #fff;
+  cursor: pointer;
+}
+select:focus {
+  border-image: url("../img/border-inset.png") 25%;
+  outline: none;
+  background-color: #999;
+  padding: 0;
+}
+select > option {
+  padding: 0.1em 0.5em 0.1em 1.5em;
+  background: url("../img/small-check.png") 0.15em 0.2em / 1em no-repeat;
+  color: #333;
+}
+select > option:hover {
+  color: #fff;
+  background: url("../img/small-check-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
+}
+select > option:checked {
+  background: url("../img/small-checked.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#555,#555);
+}
+select > option:checked:hover {
+  background: url("../img/small-checked-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
+}
