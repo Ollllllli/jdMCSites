@@ -2,6 +2,7 @@ class statsAPI {
     #apiKey = "tempAccessTokenOlliVerified";
     #apiURL = "https://jdapi.olllli.workers.dev/";
     constructor() {
+        await this.ensureAllIsUpToDate()
     }
 
     //Gets the data from the API
