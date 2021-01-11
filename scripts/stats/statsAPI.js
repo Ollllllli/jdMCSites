@@ -6,7 +6,10 @@ class statsAPI {
 
     //Gets the data from the API
     async #getDataFromAPI(entrypoint) {
-        const options = { method: 'GET', headers: { 'X-Token': this.#apiKey }, mode: 'cors' }
+        const options = {
+            method: 'GET',
+            mode: 'cors'
+        }
         const response = await fetch(this.#apiURL + String(entrypoint), options)
         if (response.status == 200) {
             const responseJSON = await response.json()
@@ -45,16 +48,15 @@ class statsAPI {
 
     //Updates the stats session storage of all players
     async #updateStatsSessionStorage(onlineLastUpdate) {
-        const uuidList = this.#getUUIDList()
-        for (i = 0; i < uuidList.length; i++) {
-            const currentUUID = uuidList[i]
-            await this.#updatePlayerStatsStorage(currentUUID)
+        const uuidList = this.getUUIDList()
+        for (const uuid of uuidList) {
+            await this.#updatePlayerStatsStorage(uuid)
         }
         sessionStorage.setItem("stats_lastupdated", onlineLastUpdate)
     }
 
     //Returns a list of UUIDs
-    #getUUIDList() {
+    getUUIDList() {
         const uuidListString = sessionStorage.getItem("uuidlist")
         const uuidList = JSON.parse(uuidListString)
         return uuidList
@@ -62,19 +64,23 @@ class statsAPI {
 
     //Ensures all sessionStorage is the latest version
     async ensureAllIsUpToDate() {
-        const isUpdated = this.#checkIfLatestVersion()
+        const isUpdated = await this.#checkIfLatestVersion()
         if (isUpdated["metadata"] == false) {
             await this.#updateMetadataSessionStorage(String(isUpdated["onlineLastUpdate"]))
+            console.log("MetaData Updated")
         }
         if (isUpdated["stats"] == false) {
             await this.#updateStatsSessionStorage(String(isUpdated["onlineLastUpdate"]))
+            console.log("Stats Updated")
         }
+        return "All Is Up To Date!"
     }
 
     //Returns a json object of all a uuids stats
     getAllStatsFromUUID(uuid) {
-        const stats = sessionStorage.getItem("stats_" + String(uuid)) || {}
-        return JSON.parse(stats)
+        const statsString = sessionStorage.getItem("stats_" + String(uuid)) || {}
+        const stats = JSON.parse(statsString)["stats"] || {}
+        return stats
     }
 
     //returns a exact stat value of a certain statistic
@@ -87,12 +93,11 @@ class statsAPI {
 
     //returns a list of {UUID, statValue}
     getAllStatsOfType(statType, statName) {
-        const uuidList = this.#getUUIDList()
+        const uuidList = this.getUUIDList()
         let statsList = []
-        for (i = 0; i < uuidList.length; i++) {
-            const currentUUID = uuidList[i]
-            const statValue = this.getExactStatFromUUID(currentUUID, statType, statName)
-            statsList.push({ "UUID": uuid, "statValue": statValue })
+        for (const uuid of uuidList) {
+            const value = this.getExactStatFromUUID(uuid, statType, statName)
+            statsList.push({ uuid, value })
         }
         return statsList
     }
