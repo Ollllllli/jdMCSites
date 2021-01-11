@@ -6,7 +6,7 @@ class statsAPI {
 
     //Gets the data from the API
     async #getDataFromAPI(entrypoint) {
-        const options = { method: 'POST', headers: { 'X-Token': this.#apiKey } }
+        const options = { method: 'GET', headers: { 'X-Token': this.#apiKey }, mode: 'cors' }
         const response = await fetch(this.#apiURL + String(entrypoint), options)
         if (response.status == 200) {
             const responseJSON = await response.json()
