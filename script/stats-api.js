@@ -25,7 +25,7 @@ class StatsAPI {
     async #checkIfLatestVersion() {
         const localStatsUpdate = sessionStorage.getItem("stats_lastupdated")
         const localMetadataUpdate = sessionStorage.getItem("metadata_lastupdated")
-        const response = await this.#getDataFromAPI("metadata/lastupdated")
+        const response = await this.#getDataFromAPI("meta/lastupdated")
         const onlineLastUpdate = response["data"]
         return { "metadata": localMetadataUpdate == onlineLastUpdate, "stats": localStatsUpdate == onlineLastUpdate, "onlineLastUpdate": onlineLastUpdate }
     }
