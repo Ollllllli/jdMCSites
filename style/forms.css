@@ -3,7 +3,6 @@
   overflow: visible;
   height: 3rem;
   width: 20rem;
-  z-index: 10;
 }
 select {
   position: absolute;
@@ -18,9 +17,6 @@ select {
   font-family: "Minecraft";
   font-size: inherit;
   padding: 0.1em;
-  /* position: absolute;
-  top: 0;
-  left: 0; */
 }
 select:hover {
   border-image: url("../img/border-button-active.png") 25%;
