@@ -185,6 +185,8 @@ class PlayerAPI extends CacheManager {
     const img = document.createElement("img");
     img.src = player.offline ? "./img/steve-head.png" : player.skin.replace("http:","https:");
     img.decode().then(()=>{
+      if (player.offline)
+        return ctx.drawImage(img, 0, 0)
       if (mode === "merge" || mode === "face")
         ctx.drawImage(img, -8, -8);
       if (mode === "merge" || mode === "hat")
