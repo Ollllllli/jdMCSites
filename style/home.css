@@ -21,6 +21,10 @@ header > #splash {
   color: #ff0;
   animation: 0.4s cubic-bezier(0.4, 0, 1, 1) infinite alternate splash;
 }
+@keyframes splash {
+  from { transform: scale(1) rotate(-20deg); }
+  to { transform: scale(1.1) rotate(-20deg); }
+}
 
 nav {
   display: grid;

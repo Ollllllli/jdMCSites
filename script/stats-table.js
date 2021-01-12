@@ -13,10 +13,6 @@
 
 const namespacePattern = /(?<namespace>(?:custom|mined|broken|crafted|used|picked_up|dropped|killed|killed_by):\w+)|./g
 
-function buildStatTracker() {
-  
-}
-
 class MCStatsTable {
   /**
    * @param {string} tableSelector
@@ -38,9 +34,12 @@ class MCStatsTable {
         `</div>`,
       `</mc-header>`,
     ));
-    this.generateTable();
+    this.rowDiv = document.createElement("div");
+    this.table.insertAdjacentElement("beforeend", this.rowDiv);
+    const selectEle = this.table.querySelector("select");
+    this.generateTable(selectEle["value"]);
     this.table.querySelector("select").addEventListener("change", e=>{
-      this.generateTable(e.target["value"]);
+      this.generateTable(selectEle["value"]);
     });
   }
   /**
@@ -50,7 +49,8 @@ class MCStatsTable {
     /** @type {Map<string,{valueFunc($_statsInstance:StatsAPI,$_uuid:string):number;formatFunc(x:number):string}>} */
     const statsMap = new Map();
     for (const statOption of this.table.children) {
-      if (statOption.tagName !== "MC-STAT") continue;
+      if (statOption.tagName !== "MC-STAT")
+        continue;
       // value function builder
       const valueExpression = statOption.getAttribute("value");
       let valueFuncBody = "";
@@ -76,11 +76,8 @@ class MCStatsTable {
   }
 
   generateTable(statOptionKey = [...this.statsOptions.entries()][0][0]) {
-    for (const child of this.table.children) {
-      if (child.tagName !== "MC-HEADER")
-        this.table.removeChild(child);
-    }
     const statOption = this.statsOptions.get(statOptionKey);
+    this.rowDiv.innerHTML = "";
     /** @type [number,HTMLElement][] */
     const statTableList = [];
     for (const uuid of this.statsInstance.uuids) {
@@ -98,7 +95,7 @@ class MCStatsTable {
       statTableList.push([statValue, rowEle]);
     }
     statTableList.sort((a,b)=>b[0]-a[0]).forEach(e=>{
-      this.table.insertAdjacentElement("beforeend", e[1]);
+      this.rowDiv.insertAdjacentElement("beforeend", e[1]);
     });
   }
 }
@@ -106,6 +103,10 @@ class MCStatsTable {
 window.onload = async()=>{
   const stats = new StatsAPI();  
   const player = new PlayerAPI();
+  const loadingEle = document.createElement("span");
+  loadingEle.classList.add("loading-icon");
+  document.querySelector("header div").insertAdjacentElement("afterend", loadingEle);
   await Promise.all([stats.init(), player.init()]);
   new MCStatsTable("mc-stats-table", stats, player);
+  loadingEle.remove();
 };

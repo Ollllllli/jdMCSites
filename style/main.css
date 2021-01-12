@@ -25,11 +25,6 @@
   font-style: italic;
 }
 
-@keyframes splash {
-  from { transform: scale(1) rotate(-20deg); }
-  to { transform: scale(1.1) rotate(-20deg); }
-}
-
 :root {
   box-sizing: border-box;
   image-rendering: optimizeSpeed;
@@ -64,6 +59,23 @@ body {
   border-radius: 1.6rem;
   border-width: 1rem;
   border-image: url("../img/border-info.png") 37.5%;
+}
+
+.loading-icon {
+  display: inline-block;
+  width: 3em;
+  height: 100%;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: 0.4s linear infinite alternate loadingIcon;
+}
+@keyframes loadingIcon {
+  from {background-image: url("../img/load-1.png");}
+  25% {background-image: url("../img/load-2.png");}
+  50% {background-image: url("../img/load-3.png");}
+  75% {background-image: url("../img/load-4.png");}
+  to {background-image: url("../img/load-5.png");}
 }
 
 /* .toast {
