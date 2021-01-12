@@ -1,13 +1,12 @@
 .select-wrapper {
   position: relative;
   overflow: visible;
-  height: 3rem;
-  width: 20rem;
+  width: 5rem;
 }
 select {
   position: absolute;
-  left: 0;
-  top: 0;
+  right: 0;
+  top: -1.4rem;
   border-image: url("../img/border-button.png") 25%;
   border-style: solid;
   border-width: 0.4rem;

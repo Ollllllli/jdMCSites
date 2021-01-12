@@ -1,3 +1,33 @@
-mc-stats-table > mc-row {
-  
+mc-stats-table {
+  display: block;
+  margin: 0 auto;
+  font-size: 1.5rem;
+  width: 60%;
 }
+
+mc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3rem;
+}
+
+mc-header > h2 {
+  margin-left: 1rem;
+  font-size: 2rem;
+}
+
+mc-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: -0.4rem;
+}
+
+mc-row > canvas {
+  width: 2rem;
+  height: 2rem;
+  margin-right: 1rem;
+}
+
+mc-row > span:nth-of-type(1) {align-self:flex-end}
+mc-row > span:nth-of-type(2) {margin-left:auto;}

@@ -7,6 +7,8 @@
   <link href="./style/page-header.css" rel="stylesheet">
   <link href="./style/stats.css" rel="stylesheet">
   <link href="./style/forms.css" rel="stylesheet">
+  <script src="./script/main-api.js"></script>
+  <script src="./script/stats-table.js"></script>
 </head>
 <body>
   <header>
@@ -18,17 +20,12 @@
   </header>
   <main>
     <mc-stats-table>
-      <mc-stat value="(1+killed:wither)*(1+5*killed:ender_dragon)" format="x">Coolness Level</mc-stat>
       <mc-stat value="custom:play_one_minute" format="(x/60).toFixed(2)">Time Played (hrs)</mc-stat>
+      <mc-stat value="(1+killed:wither)*(1+5*killed:ender_dragon)" format="x">Coolness Level</mc-stat>
       <mc-stat value="custom:fly_one_cm" format="(x/100/1000).toFixed(2)">Flight Distance (km)</mc-stat>
       <mc-stat value="killed:shulker" format="x">Shulkers Killed</mc-stat>
-      <!---->
-      <div></div>
-      <mc-row class="style-info"></mc-row>
     </mc-stats-table>
   </main>
   <footer></footer>
-  <script src="./script/stats-api.js"></script>
-  <script src="./script/stats-table.js"></script>
 </body>
 </html>

@@ -18,40 +18,94 @@ function buildStatTracker() {
 }
 
 class MCStatsTable {
-  constructor() {
-    
+  /**
+   * @param {string} tableSelector
+   * @param {StatsAPI} statsInstance
+   * @param {PlayerAPI} playerInstance */
+  constructor(tableSelector, statsInstance, playerInstance) {
+    this.table = document.querySelector(tableSelector);
+    this.statsInstance = statsInstance;
+    this.playerInstance = playerInstance;
+    this.statsOptions = this.prepareOptions();
+    // generate table header
+    this.table.insertAdjacentHTML("beforeend", "".concat(
+      `<mc-header>`,
+        `<h2>Player</h2>`,
+        `<div class="select-wrapper">`,
+          `<select onfocus='this.size=this.children.length;' onblur='this.size=0;' onchange='this.size=1;this.blur();'>`,
+            ...[...this.statsOptions.keys()].map(v=>`<option>${v}</option>`),
+          `</select>`,
+        `</div>`,
+      `</mc-header>`,
+    ));
+    this.generateTable();
+    this.table.querySelector("select").addEventListener("change", e=>{
+      this.generateTable(e.target["value"]);
+    });
   }
-  /** @returns {{[key: string]:{valueFunc($_stats:any):number;formatFunc(x:number):string}}} */
-  loadStatsOptions() {
-    const mcStatTable = document.querySelector("mc-stats-table");
-    const trackedStats = {};
-    for (const stat of mcStatTable.children) {
-      if (stat.tagName !== "MC-STAT") continue;
+  /**
+   * @private
+   * returns {{[key: string]:{valueFunc($_stats:any):number;formatFunc(x:number):string}}} */
+  prepareOptions() {
+    /** @type {Map<string,{valueFunc($_statsInstance:StatsAPI,$_uuid:string):number;formatFunc(x:number):string}>} */
+    const statsMap = new Map();
+    for (const statOption of this.table.children) {
+      if (statOption.tagName !== "MC-STAT") continue;
       // value function builder
-      const valueExpression = stat.getAttribute("value");
+      const valueExpression = statOption.getAttribute("value");
       let valueFuncBody = "";
       for (const match of valueExpression.matchAll(namespacePattern)) {
         const matchText = match[0];
         const matchGroups = Object.entries(match.groups).filter(g=>g[1]!==undefined).map(g=>g[0]);
         if (matchGroups.includes("namespace"))
-          valueFuncBody += `$_stats["minecraft:${matchText.split(":")[0]}"]["minecraft:${matchText.split(":")[1]}"]`;
+          valueFuncBody += `$_statsInstance.getNamespaceStat("${matchText}",$_uuid)`;
         else
           valueFuncBody += matchText;
       }
-      const formatExpression = stat.getAttribute("format");
-      trackedStats[stat.textContent] = {
-        valueFunc: new Function("$_stats", `return Number(${valueFuncBody})`),
+      const formatExpression = statOption.getAttribute("format");
+      statsMap.set(statOption.textContent, {
+        //@ts-ignore
+        valueFunc: new Function("$_statsInstance", "$_uuid", `return Number(${valueFuncBody})`),
+        //@ts-ignore
         formatFunc: new Function("x", `return String(${formatExpression})`),
-      };
+      });
     }
     // clear out mc-stats-table children ready for inserting display elements
-    mcStatTable.innerHTML = "";
-    //@ts-expect-error
-    return trackedStats;
+    this.table.innerHTML = "";
+    return statsMap;
+  }
+
+  generateTable(statOptionKey = [...this.statsOptions.entries()][0][0]) {
+    for (const child of this.table.children) {
+      if (child.tagName !== "MC-HEADER")
+        this.table.removeChild(child);
+    }
+    const statOption = this.statsOptions.get(statOptionKey);
+    /** @type [number,HTMLElement][] */
+    const statTableList = [];
+    for (const uuid of this.statsInstance.uuids) {
+      const player = this.playerInstance.players.get(uuid);
+      if (player.offline)
+        continue;
+      const rowEle = document.createElement("mc-row");
+      const cnvEle = this.playerInstance.getHeadCanvas(uuid);
+      const statValue = statOption.valueFunc(this.statsInstance, uuid);
+      const statFormatted = statOption.formatFunc(statValue);
+      rowEle.classList.add("style-info");
+      rowEle.insertAdjacentElement("beforeend", cnvEle);
+      rowEle.insertAdjacentHTML("beforeend", `<span>${player.username}</span>`);
+      rowEle.insertAdjacentHTML("beforeend", `<span>${statFormatted}</span>`);
+      statTableList.push([statValue, rowEle]);
+    }
+    statTableList.sort((a,b)=>b[0]-a[0]).forEach(e=>{
+      this.table.insertAdjacentElement("beforeend", e[1]);
+    });
   }
 }
 
 window.onload = async()=>{
-  const api = new StatsAPI();  
-  await api.init();
+  const stats = new StatsAPI();  
+  const player = new PlayerAPI();
+  await Promise.all([stats.init(), player.init()]);
+  new MCStatsTable("mc-stats-table", stats, player);
 };
