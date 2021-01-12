@@ -21,9 +21,21 @@
   <main>
     <mc-stats-table>
       <mc-stat value="custom:play_one_minute" format="(x/72000).toFixed(2)">Time Played (hrs)</mc-stat>
-      <mc-stat value="(1+killed:wither)*(1+5*killed:ender_dragon)" format="x">Coolness Level</mc-stat>
-      <mc-stat value="custom:fly_one_cm" format="(x/100/1000).toFixed(2)">Flight Distance (km)</mc-stat>
+      <mc-stat value="custom:leave_game" format="x">Times Exitted Server</mc-stat>
+      <mc-stat value="custom:fly_one_cm" format="(x/100/1000).toFixed(2)">Distance Flown (km)</mc-stat>
+      <mc-stat value="custom:walk_one_cm" format="(x/100/1000).toFixed(2)">Distance Walked (km)</mc-stat>
+      <mc-stat value="custom:sprint_one_cm" format="(x/100/1000).toFixed(2)">Distance Ran (km)</mc-stat>
+      <mc-stat value="custom:boat_one_cm" format="(x/100/1000).toFixed(2)">Distance Boated (km)</mc-stat>
+      <mc-stat value="custom:minecart_one_cm" format="(x/100/1000).toFixed(2)">Distance Minecarted (km)</mc-stat>
+      <mc-stat value="custom:jump" format="x">Times Jumped</mc-stat>
+      <mc-stat value="(custom:player_kills)/(killed_by:player)" format="(x).toFixed(2)">Played K/D</mc-stat>
+      <mc-stat value="custom:mob_kills" format="x">Mobs Killed</mc-stat>
+      <mc-stat value="custom:interact_with_anvil" format="x">Anvil Interactions</mc-stat>
+      <mc-stat value="(mined:diamond_ore)-(used:diamond_ore)" format="x">Diamond Ore Mined</mc-stat>
+      <mc-stat value="(mined:ancient_debris)-(used:ancient_debris)" format="x">Ancient Debris Mined</mc-stat>
       <mc-stat value="killed:shulker" format="x">Shulkers Killed</mc-stat>
+      <mc-stat value="custom:traded_with_villager" format="x">Trades with Villagers</mc-stat>
+      <mc-stat value="(1+killed:wither)*(1+5*killed:ender_dragon)" format="x">Coolness Level</mc-stat>
     </mc-stats-table>
   </main>
   <footer></footer>
