@@ -1,103 +1,125 @@
+//@ts-check
+
+class APIError extends Error {}
+
+/** Singleton class to manage Statistics from the API server. */
 class StatsAPI {
-    #apiURL = "https://jdapi.olllli.workers.dev/";
-    constructor() {
-        //this.ensureAllIsUpToDate()
-    }
+  _apiURL = "https://jdapi.olllli.workers.dev/";
+  constructor() {
+    //this.ensureAllIsUpToDate()
+    // fire ready event
+  }
 
-    //Gets the data from the API
-    async #getDataFromAPI(entrypoint) {
-        const options = {
-            method: 'GET'
-        }
-        const response = await fetch(this.#apiURL + String(entrypoint), options)
-        if (response.status == 200) {
-            const responseJSON = await response.json()
-            return responseJSON
-        } else {
-            if (response == "error") {
-                throw new Error("some error from getDataFromAPI")
-                //better error handling
-            }
-        }
-    }
+  /** Return UUID Cache.
+   * @returns {string[]} */
+  getUUIDList() {
+    return JSON.parse(sessionStorage.getItem("uuid") ?? "[]");
+  }
 
-    //Checks if the sessionStorage data is the latest version
-    async #checkIfLatestVersion() {
-        const localStatsUpdate = sessionStorage.getItem("stats_lastupdated")
-        const localMetadataUpdate = sessionStorage.getItem("metadata_lastupdated")
-        const response = await this.#getDataFromAPI("meta/lastupdated")
-        const onlineLastUpdate = response["data"]
-        return { "metadata": localMetadataUpdate == onlineLastUpdate, "stats": localStatsUpdate == onlineLastUpdate, "onlineLastUpdate": onlineLastUpdate }
+  /** Wrapper function to `GET` API endpoint data.
+   * @param {string} endpoint
+   * @returns {Promise<any | never>} */
+  async _getDataFromAPI(endpoint) {
+    // Fetch data from the API server.
+    const response = await fetch(`${this._apiURL}${endpoint}`);
+    // If successful, handle depending on endpoint.
+    if (response.status == 200) {
+      // Handle response Content-Type header accordingly.
+//!!! CURRENTLY DISABLED AS SESSIONSTORAGE ONLY TAKES STRING
+      //if (response.headers.get("Content-Type") === "application/json")
+      //  return await response.json();
+      //else
+      return await response.text();
     }
+    // If an API failure occured, throw an error up the chain using the response body.
+    else {
+      throw new APIError(await response.text());
+    }
+  }
 
-    //Updates the metadata session storage
-    async #updateMetadataSessionStorage(onlineLastUpdate) {
-        const response = await this.#getDataFromAPI("uuids")
-        const uuidlist = response["data"]
-        sessionStorage.setItem("uuidlist", uuidlist)
-        sessionStorage.setItem("metadata_lastupdated", onlineLastUpdate)
-    }
+  /** Checks if StatsAPI's sessionStorage is up to date.
+   * Returns whether stats and uuid are up to date,
+   * and includes the API Server's own update timestamp.
+   * @returns {Promise<{stats: boolean, uuid: boolean, serverUpdateTimestamp: string}>} */
+  async _checkIfLatestVersion() {
+    const clientStatsUpdateTimestamp = sessionStorage.getItem("meta.lastupdated:stats");
+    const clientUuidUpdateTimestamp = sessionStorage.getItem("meta.lastupdated:uuid");
+    const serverUpdateTimestamp = await this._getDataFromAPI("meta/lastupdated");
+    return {
+      stats: clientStatsUpdateTimestamp === serverUpdateTimestamp,
+      uuid: clientUuidUpdateTimestamp === serverUpdateTimestamp,
+      serverUpdateTimestamp,
+    };
+  }
 
-    //Updates a single players stats storage, seperated because might be useful later
-    async #updatePlayerStatsStorage(uuid) {
-        const response = await this.#getDataFromAPI("stats/" + String(uuid))
-        const playerStats = response["data"]
-        sessionStorage.setItem("stats_" + uuid, playerStats)
-    }
+  /** Update the UUID Cache.
+   * @param {string} serverUpdateTimestamp */
+  async _updateUuidCache(serverUpdateTimestamp) {
+    const uuids = await this._getDataFromAPI("uuid");
+    sessionStorage.setItem("uuid", uuids);
+    sessionStorage.setItem("meta.lastupdated:uuid", serverUpdateTimestamp);
+  }
 
-    //Updates the stats session storage of all players
-    async #updateStatsSessionStorage(onlineLastUpdate) {
-        const uuidList = this.getUUIDList()
-        for (const uuid of uuidList) {
-            await this.#updatePlayerStatsStorage(uuid)
-        }
-        sessionStorage.setItem("stats_lastupdated", onlineLastUpdate)
-    }
+  /** Update the Stats Cache, storing a record per uuid.
+   * @param {string} uuid
+   * @param {string} serverUpdateTimestamp */
+  async _updateTargetStatsCache(uuid, serverUpdateTimestamp) {
+    const stats = await this._getDataFromAPI(`stats/${uuid}`);
+    sessionStorage.setItem(`stats:${uuid}`, stats);
+    sessionStorage.setItem(`meta.lastupdated:stats.${uuid}`, serverUpdateTimestamp);
+  }
 
-    //Returns a list of UUIDs
-    getUUIDList() {
-        const uuidListString = sessionStorage.getItem("uuidlist")
-        const uuidList = JSON.parse(uuidListString)
-        return uuidList
-    }
+  /** Update the Stats Cache of ALL uuids.
+   * @param {string} serverUpdateTimestamp */
+  async _updateAllStatsCache(serverUpdateTimestamp) {
+    const uuids = this.getUUIDList();
+    for (const uuid of uuids)
+      await this._updateTargetStatsCache(uuid, serverUpdateTimestamp);
+    sessionStorage.setItem("meta.lastupdated:stats", serverUpdateTimestamp);
+  }
 
-    //Ensures all sessionStorage is the latest version
-    async ensureAllIsUpToDate() {
-        const isUpdated = await this.#checkIfLatestVersion()
-        if (isUpdated["metadata"] == false) {
-            await this.#updateMetadataSessionStorage(String(isUpdated["onlineLastUpdate"]))
-            console.log("MetaData Updated")
-        }
-        if (isUpdated["stats"] == false) {
-            await this.#updateStatsSessionStorage(String(isUpdated["onlineLastUpdate"]))
-            console.log("Stats Updated")
-        }
-        return "All Is Up To Date!"
-    }
 
-    //Returns a json object of all a uuids stats
-    getAllStatsFromUUID(uuid) {
-        const statsString = sessionStorage.getItem("stats_" + String(uuid)) || {}
-        const stats = JSON.parse(statsString)["stats"] || {}
-        return stats
-    }
 
-    //returns a exact stat value of a certain statistic
-    getExactStatFromUUID(uuid, statType, statName) {
-        const allStats = this.getAllStatsFromUUID(String(uuid))
-        const allStatsFromType = allStats[String(statType)] || {}
-        const statValue = allStatsFromType[String(statName)] || 0
-        return Number(statValue)
+  /** Ensure ALL Stats and UUIDs are up to date. */
+  async ensureAllIsUpToDate() {
+    const isUpdated = await this._checkIfLatestVersion();
+    if (!isUpdated.uuid) {
+      await this._updateUuidCache(isUpdated.serverUpdateTimestamp);
+      console.log("UUIDs Updated");
     }
+    if (!isUpdated.stats) {
+      await this._updateAllStatsCache(String(isUpdated["onlineLastUpdate"]))
+      console.log("Stats Updated");
+    }
+  }
 
-    //returns a list of {UUID, statValue}
-    getAllStatsOfType(statType, statName) {
-        const uuidList = this.getUUIDList()
-        let statsList = []
-        for (const uuid of uuidList) {
-            const value = this.getExactStatFromUUID(uuid, statType, statName)
-            statsList.push({ uuid, value })
-        }
-        return statsList
-    }
+  /** Return a Minecraft Stats Object for the given `uuid`.
+   * @param {string} uuid
+   * @returns {any} */
+  getStats(uuid) {
+    return JSON.parse(sessionStorage.getItem(`stats:${uuid}`) ?? "{}")["stats"] ?? {};
+  }
+
+  /** Return a Minecraft Stats Object for the given `uuid`.
+   * @param {string} uuid
+   * @param {string} namespace
+   * @returns {number} */
+  getNamespaceStat(namespace, uuid) {
+    const stats = this.getStats(uuid);
+    const namespaceKeys = namespace.split(":");
+    return stats[`minecraft:${namespaceKeys[0]}`][`minecraft:${namespaceKeys[1]}`];
+  }
+
+  /** Return an ordered object of UUIDs and their score for the `namespace` statistic.
+   * @param {string} namespace
+   * @returns {{[key: string]: number}} */
+  getUUIDScores(namespace) {
+      const uuids = this.getUUIDList();
+      /** @type {{[key: string]: number}} */
+      const statsObject = {};
+      for (const uuid of uuids) {
+        statsObject[uuid] = this.getNamespaceStat(namespace, uuid);
+      }
+      return statsObject;
+  }
 }
