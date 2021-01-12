@@ -52,8 +52,6 @@ class MCStatsTable {
 }
 
 window.onload = async()=>{
-  const api = new StatsAPI();
-  await api.ensureAllIsUpToDate();
-  const uuids = api.getUUIDList();
-  
+  const api = new StatsAPI();  
+  await api.init();
 };
