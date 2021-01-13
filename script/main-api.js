@@ -196,95 +196,85 @@ class PlayerAPI extends CacheManager {
   }
 }
 
-class AdvancementsAPI {
-  #apiURL = "https://jdapi.olllli.workers.dev/";
+class AdvancementsAPI extends CacheManager {
+  /** @type {Map<string,any>} */
+  advancements = new Map();
 
-  //Gets the data from the API
-  //@ts-ignore
-  async #getDataFromAPI(entrypoint) {
-    /** @type {RequestInit} */
-    const options = {
-      method: "GET",
-      mode: "cors"
+  /** Ensure cache is up to date, and prepare properties. */
+  async init() {
+    const isUpdated = await super.init();
+    if (!isUpdated.advancements) {
+      await this.#updateAllAdvancementsCache(isUpdated.serverUpdateTimestamp)
+      console.log("Advancements Updated");
     }
-    const response = await fetch(this.#apiURL + String(entrypoint), options)
-    if (response.status == 200) {
-      const responseJSON = await response.json()
-      return responseJSON
+    /** @type {string[]} */
+    for (const uuid of this.uuids)
+      this.advancements.set(uuid, JSON.parse(this.storage.getItem(`advancements:${uuid}`)));
+    return isUpdated;
+  }
+
+  /** Returns the object containing a done boolean and the criteria completed of advancement `namespace` for `uuid`.
+   * @param {string} uuid - uuid string
+   * @param {string} namespace - namespaced advancement like story/shiny_gear
+   * @returns {{done: boolean, criteria: {[criteria: string]: Date}}}
+   */
+  getNamespaceAdvancement(namespace, uuid) {
+    const uuidAdvancements = this.advancements.get(uuid)
+    const advancementData = uuidAdvancements[`minecraft:${namespace}`] ?? {}
+    /** @type {{[criteria: string]: Date}} */
+    let criteria = Object(); 
+    //Converts all the dates to date objects
+    for (let criterion in advancementData.criteria) {
+      criteria[criterion] = new Date(advancementData.criteria[criterion])
+    }
+    return {done: advancementData["done"] ?? false, criteria: criteria ?? {}}
+  }
+
+  /** Returns the date of the latest completed criteria and null if not completed yet
+   * @param {string} uuid - uuid string
+   * @param {string} namespace - namespaced advancement like story/shiny_gear
+   * @returns {Date|null} - date of the latest criteria completed
+   */
+  getAdvancementDate(namespace, uuid) {
+    const advancement = this.getNamespaceAdvancement(namespace, uuid)
+    let returnDate;
+    if (!advancement.done) {
+      returnDate = null // returns null if advancement isn't done
     } else {
-      throw new Error("some error from getDataFromAPI")
-      //better error handling
+      let dateList = []
+      for (let criterion in advancement.criteria) {
+        dateList.push(advancement.criteria[criterion]) //adds all dates to the list
+      }
+      console.log(dateList)
+      //Sorts the datelist in descending order
+      dateList.sort((a,b)=>{
+        if (a>b){return -1}
+        else if (b>a){return 1}
+        else {return 0}
+      })
+      returnDate = dateList[0] ?? null //null just incase there are no criteria
     }
+    return returnDate
   }
 
-  //Checks if the this.storage data is the latest version
+  /** Update the Advancements Cache, storing a record per uuid.
+   * @private
+   * @param {string} serverUpdateTimestamp
+   * @param {string} uuid */
   //@ts-ignore
-  async #checkIfLatestVersion() {
-    const localAdvancementsUpdate = sessionStorage.getItem("advancements_lastupdated")
-    const localMetadataUpdate = sessionStorage.getItem("metadata_lastupdated")
-    const response = await this.#getDataFromAPI("meta/lastupdated")
-    const onlineLastUpdate = response["data"]
-    return { "metadata": localMetadataUpdate == onlineLastUpdate, "advancements": localAdvancementsUpdate == onlineLastUpdate, "onlineLastUpdate": onlineLastUpdate }
+  async #updateTargetAdvancementsCache(serverUpdateTimestamp, uuid) {
+    const advancements = await this.fetchAPI(`advancements/${uuid}`);
+    this.storage.setItem(`advancements:${uuid}`, advancements);
+    this.storage.setItem(`meta.lastupdated:advancements.${uuid}`, serverUpdateTimestamp);
   }
 
-  //Updates the metadata session storage
+  /** Update the Advancements Cache of ALL uuids.
+   * @private
+   * @param {string} serverUpdateTimestamp */
   //@ts-ignore
-  async #updateMetadataSessionStorage(onlineLastUpdate) {
-    const response = await this.#getDataFromAPI("uuids")
-    const uuidlist = response["data"]
-    sessionStorage.setItem("uuidlist", uuidlist)
-    sessionStorage.setItem("metadata_lastupdated", onlineLastUpdate)
-  }
-
-  //Updates a single players advancements storage, seperated because might be useful later
-  //@ts-ignore
-  async #updatePlayerAdvancementsStorage(uuid) {
-    const response = await this.#getDataFromAPI("advancements/" + String(uuid))
-    const playerAdvancements = response["data"]
-    sessionStorage.setItem("advancements_" + uuid, playerAdvancements)
-  }
-
-  //Updates the advancements session storage of all players
-  //@ts-ignore
-  async #updateAdvancementsSessionStorage(onlineLastUpdate) {
-    const uuidList = this.getUUIDList()
-    for (const uuid of uuidList) {
-      await this.#updatePlayerAdvancementsStorage(uuid)
-    }
-    sessionStorage.setItem("advancements_lastupdated", onlineLastUpdate)
-  }
-
-  //Returns a list of UUIDs
-  getUUIDList() {
-    const uuidListString = sessionStorage.getItem("uuidlist")
-    const uuidList = JSON.parse(uuidListString)
-    return uuidList
-  }
-
-  //Ensures all sessionStorage is the latest version
-  async ensureAllIsUpToDate() {
-    const isUpdated = await this.#checkIfLatestVersion()
-    if (isUpdated["metadata"] == false) {
-      await this.#updateMetadataSessionStorage(String(isUpdated["onlineLastUpdate"]))
-      console.log("MetaData Updated")
-    }
-    if (isUpdated["advancements"] == false) {
-      await this.#updateAdvancementsSessionStorage(String(isUpdated["onlineLastUpdate"]))
-      console.log("Advancements Updated")
-    }
-    return "All Is Up To Date!"
-  }
-
-  //Returns a json object of all a uuids advancements
-  getAllAdvancementsFromUUID(uuid) {
-    const advancementsString = sessionStorage.getItem("advancements_" + String(uuid)) || "{}"
-    const advancements = JSON.parse(advancementsString)
-    return advancements
-  }
-
-  //returns the advancement details based on an advancement
-  getExactAdvancementFromUUID(uuid, advancementName) {
-    const allAdvancements = this.getAllAdvancementsFromUUID(String(uuid))
-    return allAdvancements[String(advancementName)] || null
+  async #updateAllAdvancementsCache(serverUpdateTimestamp) {
+    for (const uuid of this.uuids)
+      await this.#updateTargetAdvancementsCache(serverUpdateTimestamp, uuid);
+    this.storage.setItem("meta.lastupdated:advancements", serverUpdateTimestamp);
   }
 }
