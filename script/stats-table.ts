@@ -1,6 +1,3 @@
-//@ts-check
-///<reference lib="esnext"/>
-
 /* OLD EXAMPLE FOR TEMPORARY STYLING PURPOSES
 <div class="select-wrapper">
   <select onfocus='this.size=this.children.length;' onblur='this.size=0;' onchange='this.size=1;this.blur();'>
@@ -14,14 +11,11 @@
 const namespacePattern = /(?<namespace>(?:custom|mined|broken|crafted|used|picked_up|dropped|killed|killed_by):\w+)|./g
 
 class MCStatsTable {
-  /**
-   * @param {string} tableSelector
-   * @param {StatsAPI} statsInstance
-   * @param {PlayerAPI} playerInstance */
-  constructor(tableSelector, statsInstance, playerInstance) {
-    this.table = document.querySelector(tableSelector);
-    this.statsInstance = statsInstance;
-    this.playerInstance = playerInstance;
+  table: Element;
+  statsOptions: any;
+  rowDiv: HTMLDivElement;
+  constructor(tableSelector: string, private statsInstance: StatsAPI, private playerInstance: PlayerAPI) {
+    this.table = document.querySelector(tableSelector)!;
     this.statsOptions = this.prepareOptions();
     // generate table header
     this.table.insertAdjacentHTML("beforeend", "".concat(
@@ -36,9 +30,9 @@ class MCStatsTable {
     ));
     this.rowDiv = document.createElement("div");
     this.table.insertAdjacentElement("beforeend", this.rowDiv);
-    const selectEle = this.table.querySelector("select");
+    const selectEle = this.table.querySelector("select")!;
     this.generateTable(selectEle["value"]);
-    this.table.querySelector("select").addEventListener("change", e=>{
+    this.table.querySelector("select")?.addEventListener("change", e=>{
       this.generateTable(selectEle["value"]);
     });
   }
@@ -47,23 +41,23 @@ class MCStatsTable {
    * returns {{[key: string]:{valueFunc($_stats:any):number;formatFunc(x:number):string}}} */
   prepareOptions() {
     /** @type {Map<string,{valueFunc($_statsInstance:StatsAPI,$_uuid:string):number;formatFunc(x:number):string}>} */
-    const statsMap = new Map();
+    const statsMap: Map<string, { valueFunc($_statsInstance: StatsAPI, $_uuid: string): number; formatFunc(x: number): string; }> = new Map();
     for (const statOption of this.table.children) {
       if (statOption.tagName !== "MC-STAT")
         continue;
       // value function builder
-      const valueExpression = statOption.getAttribute("value");
+      const valueExpression = statOption.getAttribute("value")!;
       let valueFuncBody = "";
       for (const match of valueExpression.matchAll(namespacePattern)) {
         const matchText = match[0];
-        const matchGroups = Object.entries(match.groups).filter(g=>g[1]!==undefined).map(g=>g[0]);
+        const matchGroups = Object.entries(match.groups!).filter(g=>g[1]!==undefined).map(g=>g[0]);
         if (matchGroups.includes("namespace"))
           valueFuncBody += `$_statsInstance.getNamespaceStat("${matchText}",$_uuid)`;
         else
           valueFuncBody += matchText;
       }
       const formatExpression = statOption.getAttribute("format");
-      statsMap.set(statOption.textContent, {
+      statsMap.set(statOption.textContent!, {
         //@ts-ignore
         valueFunc: new Function("$_statsInstance", "$_uuid", `return Number(${valueFuncBody})`),
         //@ts-ignore
@@ -79,9 +73,9 @@ class MCStatsTable {
     const statOption = this.statsOptions.get(statOptionKey);
     this.rowDiv.innerHTML = "";
     /** @type [number,HTMLElement][] */
-    const statTableList = [];
+    const statTableList: [number, HTMLElement][] = [];
     for (const uuid of this.statsInstance.uuids) {
-      const player = this.playerInstance.players.get(uuid);
+      const player = this.playerInstance.players.get(uuid)!;
       if (player.offline)
         continue;
       const rowEle = document.createElement("mc-row");
@@ -105,7 +99,7 @@ window.onload = async()=>{
   const player = new PlayerAPI();
   const loadingEle = document.createElement("span");
   loadingEle.classList.add("loading-icon");
-  document.querySelector("header div").insertAdjacentElement("afterend", loadingEle);
+  document.querySelector("header div")!.insertAdjacentElement("afterend", loadingEle);
   await Promise.all([stats.init(), player.init()]);
   new MCStatsTable("mc-stats-table", stats, player);
   loadingEle.remove();

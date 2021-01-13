@@ -9,7 +9,7 @@ class CacheManager {
   /** @protected */
   storage = localStorage;
   /** @type {Set<string>} */
-  uuids = new Set();
+  uuids: Set<string> = new Set();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {
@@ -19,17 +19,14 @@ class CacheManager {
       console.log("UUIDs Updated");
     }
     /** @type {string[]} */
-    const uuidsList = JSON.parse(this.storage.getItem("uuid") ?? "[]");
+    const uuidsList: string[] = JSON.parse(this.storage.getItem("uuid") ?? "[]");
     for (const uuid of uuidsList)
       this.uuids.add(uuid);
     return isUpdated;
   }
 
-  /** Wrapper function to `GET` API endpoint data.
-   * @protected
-   * @param {string} endpoint
-   * @returns {Promise<string | never>} */
-  async fetchAPI(endpoint) {
+  /** Wrapper function to `GET` API endpoint data. */
+  protected async fetchAPI(endpoint: string) {
     // Fetch data from the API server.
     const response = await fetch(`${this.#apiBaseUrl}${endpoint}`);
     // If successful, return response body.
@@ -46,7 +43,7 @@ class CacheManager {
    * and includes the API Server's own update timestamp.
    * @private
    * @returns {Promise<{advancements: boolean, player: boolean, stats: boolean, uuid: boolean, serverUpdateTimestamp: string}>} */
-  async versionCheck() {
+  async versionCheck(): Promise<{ advancements: boolean; player: boolean; stats: boolean; uuid: boolean; serverUpdateTimestamp: string; }> {
     const clientAdvancementsUpdateTimestamp = this.storage.getItem("meta.lastupdated:advancements");
     const clientPlayerUpdateTimestamp = this.storage.getItem("meta.lastupdated:player");
     const clientStatsUpdateTimestamp = this.storage.getItem("meta.lastupdated:stats");
@@ -65,7 +62,7 @@ class CacheManager {
    * @private
    * @param {string} serverUpdateTimestamp */
   //@ts-ignore
-  async #updateUuidCache(serverUpdateTimestamp) {
+  async #updateUuidCache(serverUpdateTimestamp: string) {
     const uuidsString = await this.fetchAPI("uuid");
     this.storage.setItem("uuid", uuidsString);
     this.storage.setItem("meta.lastupdated:uuid", serverUpdateTimestamp);
@@ -76,7 +73,7 @@ class CacheManager {
 class StatsAPI extends CacheManager {
 
   /** @type {Map<string,any>} */
-  stats = new Map();
+  stats: Map<string, any> = new Map();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {
@@ -87,7 +84,7 @@ class StatsAPI extends CacheManager {
     }
     /** @type {string[]} */
     for (const uuid of this.uuids)
-      this.stats.set(uuid, JSON.parse(this.storage.getItem(`stats:${uuid}`))["stats"]);
+      this.stats.set(uuid, JSON.parse(this.storage.getItem(`stats:${uuid}`)!)["stats"]);
     return isUpdated;
   }
 
@@ -95,7 +92,7 @@ class StatsAPI extends CacheManager {
    * @param {string} uuid
    * @param {string} namespace
    * @returns {number} */
-  getNamespaceStat(namespace, uuid) {
+  getNamespaceStat(namespace: string, uuid: string): number {
     const uuidStats = this.stats.get(uuid);
     const namespaceKeys = namespace.split(":");
     return (uuidStats[`minecraft:${namespaceKeys[0]}`] ?? {})[`minecraft:${namespaceKeys[1]}`] ?? 0;
@@ -104,9 +101,9 @@ class StatsAPI extends CacheManager {
   /** Return an ordered object of UUIDs and their score for the `namespace` statistic.
    * @param {string} namespace
    * @returns {{[uuid: string]: number}} */
-  getUUIDScores(namespace) {
+  getUUIDScores(namespace: string): { [uuid: string]: number; } {
       /** @type {{[uuid: string]: number}} */
-      const statsObject = {};
+      const statsObject: { [uuid: string]: number; } = {};
       for (const uuid of this.uuids) {
         statsObject[uuid] = this.getNamespaceStat(namespace, uuid);
       }
@@ -118,7 +115,7 @@ class StatsAPI extends CacheManager {
    * @param {string} serverUpdateTimestamp
    * @param {string} uuid */
   //@ts-ignore
-  async #updateTargetStatsCache(serverUpdateTimestamp, uuid) {
+  async #updateTargetStatsCache(serverUpdateTimestamp: string, uuid: string) {
     const stats = await this.fetchAPI(`stats/${uuid}`);
     this.storage.setItem(`stats:${uuid}`, stats);
     this.storage.setItem(`meta.lastupdated:stats.${uuid}`, serverUpdateTimestamp);
@@ -128,7 +125,7 @@ class StatsAPI extends CacheManager {
    * @private
    * @param {string} serverUpdateTimestamp */
   //@ts-ignore
-  async #updateAllStatsCache(serverUpdateTimestamp) {
+  async #updateAllStatsCache(serverUpdateTimestamp: string) {
     for (const uuid of this.uuids)
       await this.#updateTargetStatsCache(serverUpdateTimestamp, uuid);
     this.storage.setItem("meta.lastupdated:stats", serverUpdateTimestamp);
@@ -137,7 +134,7 @@ class StatsAPI extends CacheManager {
 
 class PlayerAPI extends CacheManager {
   /** @type {Map<string,{username:string,skin:string,offline:boolean,advancementCount:number}>} */
-  players = new Map();
+  players: Map<string, { username: string; skin: string; offline: boolean; advancementCount: number; }> = new Map();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {
@@ -148,7 +145,7 @@ class PlayerAPI extends CacheManager {
     }
     /** @type {string[]} */
     for (const uuid of this.uuids)
-      this.players.set(uuid, JSON.parse(this.storage.getItem(`player:${uuid}`)));
+      this.players.set(uuid, JSON.parse(this.storage.getItem(`player:${uuid}`)!));
     return isUpdated;
   }
 
@@ -157,7 +154,7 @@ class PlayerAPI extends CacheManager {
    * @param {string} serverUpdateTimestamp
    * @param {string} uuid */
   //@ts-ignore
-  async #updateTargetPlayerCache(serverUpdateTimestamp, uuid) {
+  async #updateTargetPlayerCache(serverUpdateTimestamp: string, uuid: string) {
     const player = await this.fetchAPI(`player/${uuid}`);
     this.storage.setItem(`player:${uuid}`, player);
     this.storage.setItem(`meta.lastupdated:player.${uuid}`, serverUpdateTimestamp);
@@ -167,7 +164,7 @@ class PlayerAPI extends CacheManager {
    * @private
    * @param {string} serverUpdateTimestamp */
   //@ts-ignore
-  async #updateAllPlayersCache(serverUpdateTimestamp) {
+  async #updateAllPlayersCache(serverUpdateTimestamp: string) {
     for (const uuid of this.uuids)
       await this.#updateTargetPlayerCache(serverUpdateTimestamp, uuid);
     this.storage.setItem("meta.lastupdated:player", serverUpdateTimestamp);
@@ -176,16 +173,16 @@ class PlayerAPI extends CacheManager {
   /** Get a data URI of the Player's head without hat.
    * @param {string} uuid
    * @param {"merge"|"face"|"hat"} mode */
-  getHeadCanvas(uuid, mode="merge") {
+  getHeadCanvas(uuid: string, mode: "merge" | "face" | "hat"="merge") {
     const player = this.players.get(uuid);
     const cnv = document.createElement("canvas");
     cnv.width = 8;
     cnv.height = 8;
-    const ctx = cnv.getContext("2d");
+    const ctx = cnv.getContext("2d")!;
     const img = document.createElement("img");
-    img.src = player.offline ? "./img/steve-head.png" : player.skin.replace("http:","https:");
+    img.src = player!.offline ? "./img/steve-head.png" : player!.skin.replace("http:","https:");
     img.decode().then(()=>{
-      if (player.offline)
+      if (player!.offline)
         return ctx.drawImage(img, 0, 0)
       if (mode === "merge" || mode === "face")
         ctx.drawImage(img, -8, -8);
@@ -198,7 +195,7 @@ class PlayerAPI extends CacheManager {
 
 class AdvancementsAPI extends CacheManager {
   /** @type {Map<string,any>} */
-  advancements = new Map();
+  advancements: Map<string, any> = new Map();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {
@@ -209,7 +206,7 @@ class AdvancementsAPI extends CacheManager {
     }
     /** @type {string[]} */
     for (const uuid of this.uuids)
-      this.advancements.set(uuid, JSON.parse(this.storage.getItem(`advancements:${uuid}`)));
+      this.advancements.set(uuid, JSON.parse(this.storage.getItem(`advancements:${uuid}`)!));
     return isUpdated;
   }
 
@@ -218,11 +215,11 @@ class AdvancementsAPI extends CacheManager {
    * @param {string} namespace - namespaced advancement like story/shiny_gear
    * @returns {{done: boolean, criteria: {[criteria: string]: Date}}}
    */
-  getNamespaceAdvancement(namespace, uuid) {
+  getNamespaceAdvancement(namespace: string, uuid: string): { done: boolean; criteria: { [criteria: string]: Date; }; } {
     const uuidAdvancements = this.advancements.get(uuid)
     const advancementData = uuidAdvancements[`minecraft:${namespace}`] ?? {}
     /** @type {{[criteria: string]: Date}} */
-    let criteria = Object(); 
+    let criteria: { [criteria: string]: Date; } = Object(); 
     //Converts all the dates to date objects
     for (let criterion in advancementData.criteria) {
       criteria[criterion] = new Date(advancementData.criteria[criterion])
@@ -235,7 +232,7 @@ class AdvancementsAPI extends CacheManager {
    * @param {string} namespace - namespaced advancement like story/shiny_gear
    * @returns {Date|null} - date of the latest criteria completed
    */
-  getAdvancementDate(namespace, uuid) {
+  getAdvancementDate(namespace: string, uuid: string): Date | null {
     const advancement = this.getNamespaceAdvancement(namespace, uuid)
     let returnDate;
     if (!advancement.done) {
@@ -262,7 +259,7 @@ class AdvancementsAPI extends CacheManager {
    * @param {string} serverUpdateTimestamp
    * @param {string} uuid */
   //@ts-ignore
-  async #updateTargetAdvancementsCache(serverUpdateTimestamp, uuid) {
+  async #updateTargetAdvancementsCache(serverUpdateTimestamp: string, uuid: string) {
     const advancements = await this.fetchAPI(`advancements/${uuid}`);
     this.storage.setItem(`advancements:${uuid}`, advancements);
     this.storage.setItem(`meta.lastupdated:advancements.${uuid}`, serverUpdateTimestamp);
@@ -272,7 +269,7 @@ class AdvancementsAPI extends CacheManager {
    * @private
    * @param {string} serverUpdateTimestamp */
   //@ts-ignore
-  async #updateAllAdvancementsCache(serverUpdateTimestamp) {
+  async #updateAllAdvancementsCache(serverUpdateTimestamp: string) {
     for (const uuid of this.uuids)
       await this.#updateTargetAdvancementsCache(serverUpdateTimestamp, uuid);
     this.storage.setItem("meta.lastupdated:advancements", serverUpdateTimestamp);
