@@ -52,7 +52,7 @@ class MCStatsTable {
         const matchText = match[0];
         const matchGroups = Object.entries(match.groups!).filter(g=>g[1]!==undefined).map(g=>g[0]);
         if (matchGroups.includes("namespace"))
-          valueFuncBody += `$_statsInstance.getNamespaceStat("${matchText}",$_uuid)`;
+          valueFuncBody += `$_statsInstance.getStatValue("${matchText}",$_uuid)`;
         else
           valueFuncBody += matchText;
       }
