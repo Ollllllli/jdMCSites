@@ -577,7 +577,7 @@ class MCAdvancementContainer extends HTMLElement {
         }
     };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      padding: 3px;\n      display: inline-block;\n      box-sizing: border-box;\n\n      border: 2px #000000;\n      border-radius: 4px;\n\n      background-color: #eaeaea;\n    }\n\n    mc-advancement[type="challenge"] {}\n\n    mc-advancement[type="goal"] {}\n\n    mc-advancement[done="true"] {\n      background-color: #ffd972;\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      padding: 3px;\n      display: inline-block;\n\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
 }
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
