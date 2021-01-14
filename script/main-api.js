@@ -1,280 +1,174 @@
-//@ts-check
-
-class JDAPIError extends Error {}
-
+var /** A Minecraft UUID. */ UUIDType;
+(function(UUIDType) {
+    UUIDType["_type"] = "UUID";
+})(UUIDType || (UUIDType = {
+}));
+var /** A Minecraft Namespace in format `name:value`. */ MCNamespaceType;
+(function(MCNamespaceType) {
+    MCNamespaceType["_type"] = "MCNamespace";
+})(MCNamespaceType || (MCNamespaceType = {
+}));
+var /** A Minecraft Namespace in format `name:value`. */ DateStringType;
+(function(DateStringType) {
+    DateStringType["_type"] = "DateString";
+})(DateStringType || (DateStringType = {
+}));
+class JDAPIError extends Error {
+}
 class CacheManager {
-
-  /** @private */
-  #apiBaseUrl = "https://jdapi.olllli.workers.dev/";
-  /** @protected */
-  storage = localStorage;
-  /** @type {Set<string>} */
-  uuids = new Set();
-
-  /** Ensure cache is up to date, and prepare properties. */
-  async init() {
-    const isUpdated = await this.versionCheck();
-    if (!isUpdated.uuid) {
-      await this.#updateUuidCache(isUpdated.serverUpdateTimestamp);
-      console.log("UUIDs Updated");
+    apiBaseUrl = "https://jdapi.olllli.workers.dev/";
+    storage = localStorage;
+    uuids = new Set();
+    /** Ensure cache is up to date, and prepare properties. */ async init() {
+        const isUpdated = await this.versionCheck();
+        if (!isUpdated.uuid) {
+            await this.updateUuidCache(isUpdated.serverUpdateTimestamp);
+            console.log("UUIDs Updated");
+        }
+        const uuidsList = JSON.parse(this.storage.getItem("uuid") ?? "[]");
+        for (const uuid of uuidsList)this.uuids.add(uuid);
+        return isUpdated;
     }
-    /** @type {string[]} */
-    const uuidsList = JSON.parse(this.storage.getItem("uuid") ?? "[]");
-    for (const uuid of uuidsList)
-      this.uuids.add(uuid);
-    return isUpdated;
-  }
-
-  /** Wrapper function to `GET` API endpoint data.
-   * @protected
-   * @param {string} endpoint
-   * @returns {Promise<string | never>} */
-  async fetchAPI(endpoint) {
-    // Fetch data from the API server.
-    const response = await fetch(`${this.#apiBaseUrl}${endpoint}`);
-    // If successful, return response body.
-    if (response.status == 200)
-      return response.text();
-    // If an API failure occured, throw an error up the chain using the response body.
-    else {
-      throw new JDAPIError(await response.text());
+    /** Wrapper function to `GET` API endpoint data. */ async fetchAPI(endpoint) {
+        // Fetch data from the API server.
+        const response = await fetch(`${this.apiBaseUrl}${endpoint}`);
+        // If successful, return response body.
+        if (response.status == 200) return response.text();
+        else {
+            throw new JDAPIError(await response.text());
+        }
     }
-  }
-
-  /** Checks if StatsAPI's this.storage is up to date.
+    /** Checks if StatsAPI's this.storage is up to date.
    * Returns whether stats and uuid are up to date,
-   * and includes the API Server's own update timestamp.
-   * @private
-   * @returns {Promise<{advancements: boolean, player: boolean, stats: boolean, uuid: boolean, serverUpdateTimestamp: string}>} */
-  async versionCheck() {
-    const clientAdvancementsUpdateTimestamp = this.storage.getItem("meta.lastupdated:advancements");
-    const clientPlayerUpdateTimestamp = this.storage.getItem("meta.lastupdated:player");
-    const clientStatsUpdateTimestamp = this.storage.getItem("meta.lastupdated:stats");
-    const clientUuidUpdateTimestamp = this.storage.getItem("meta.lastupdated:uuid");
-    const serverUpdateTimestamp = await this.fetchAPI("meta/lastupdated");
-    return {
-      advancements: clientAdvancementsUpdateTimestamp === serverUpdateTimestamp,
-      player: clientPlayerUpdateTimestamp === serverUpdateTimestamp,
-      stats: clientStatsUpdateTimestamp === serverUpdateTimestamp,
-      uuid: clientUuidUpdateTimestamp === serverUpdateTimestamp,
-      serverUpdateTimestamp,
-    };
-  }
-
-  /** Update the UUID Cache.
-   * @private
-   * @param {string} serverUpdateTimestamp */
-  //@ts-ignore
-  async #updateUuidCache(serverUpdateTimestamp) {
-    const uuidsString = await this.fetchAPI("uuid");
-    this.storage.setItem("uuid", uuidsString);
-    this.storage.setItem("meta.lastupdated:uuid", serverUpdateTimestamp);
-  }
-}
-
-/** Singleton class to manage Statistics from the API server. */
-class StatsAPI extends CacheManager {
-
-  /** @type {Map<string,any>} */
-  stats = new Map();
-
-  /** Ensure cache is up to date, and prepare properties. */
-  async init() {
-    const isUpdated = await super.init();
-    if (!isUpdated.stats) {
-      await this.#updateAllStatsCache(isUpdated.serverUpdateTimestamp)
-      console.log("Stats Updated");
+   * and includes the API Server's own update timestamp. */ async versionCheck() {
+        const clientAdvancementsUpdateTimestamp = this.storage.getItem("meta.lastupdated:advancements");
+        const clientPlayerUpdateTimestamp = this.storage.getItem("meta.lastupdated:player");
+        const clientStatsUpdateTimestamp = this.storage.getItem("meta.lastupdated:stats");
+        const clientUuidUpdateTimestamp = this.storage.getItem("meta.lastupdated:uuid");
+        const serverUpdateTimestamp = await this.fetchAPI("meta/lastupdated");
+        return {
+            advancements: clientAdvancementsUpdateTimestamp === serverUpdateTimestamp,
+            player: clientPlayerUpdateTimestamp === serverUpdateTimestamp,
+            stats: clientStatsUpdateTimestamp === serverUpdateTimestamp,
+            uuid: clientUuidUpdateTimestamp === serverUpdateTimestamp,
+            serverUpdateTimestamp
+        };
     }
-    /** @type {string[]} */
-    for (const uuid of this.uuids)
-      this.stats.set(uuid, JSON.parse(this.storage.getItem(`stats:${uuid}`))["stats"]);
-    return isUpdated;
-  }
-
-  /** Returns the value of stat `namespace` for `uuid`.
-   * @param {string} uuid
-   * @param {string} namespace
-   * @returns {number} */
-  getNamespaceStat(namespace, uuid) {
-    const uuidStats = this.stats.get(uuid);
-    const namespaceKeys = namespace.split(":");
-    return (uuidStats[`minecraft:${namespaceKeys[0]}`] ?? {})[`minecraft:${namespaceKeys[1]}`] ?? 0;
-  }
-
-  /** Return an ordered object of UUIDs and their score for the `namespace` statistic.
-   * @param {string} namespace
-   * @returns {{[uuid: string]: number}} */
-  getUUIDScores(namespace) {
-      /** @type {{[uuid: string]: number}} */
-      const statsObject = {};
-      for (const uuid of this.uuids) {
-        statsObject[uuid] = this.getNamespaceStat(namespace, uuid);
-      }
-      return statsObject;
-  }
-
-  /** Update the Stats Cache, storing a record per uuid.
-   * @private
-   * @param {string} serverUpdateTimestamp
-   * @param {string} uuid */
-  //@ts-ignore
-  async #updateTargetStatsCache(serverUpdateTimestamp, uuid) {
-    const stats = await this.fetchAPI(`stats/${uuid}`);
-    this.storage.setItem(`stats:${uuid}`, stats);
-    this.storage.setItem(`meta.lastupdated:stats.${uuid}`, serverUpdateTimestamp);
-  }
-
-  /** Update the Stats Cache of ALL uuids.
-   * @private
-   * @param {string} serverUpdateTimestamp */
-  //@ts-ignore
-  async #updateAllStatsCache(serverUpdateTimestamp) {
-    for (const uuid of this.uuids)
-      await this.#updateTargetStatsCache(serverUpdateTimestamp, uuid);
-    this.storage.setItem("meta.lastupdated:stats", serverUpdateTimestamp);
-  }
+    /** Update the UUID Cache. */ async updateUuidCache(serverUpdateTimestamp) {
+        const uuidsString = await this.fetchAPI("uuid");
+        this.storage.setItem("uuid", uuidsString);
+        this.storage.setItem("meta.lastupdated:uuid", serverUpdateTimestamp);
+    }
 }
-
+/** Singleton class to manage Statistics from the API server. */ class StatsAPI extends CacheManager {
+    stats = new Map();
+    /** Ensure cache is up to date, and prepare properties. */ async init() {
+        const isUpdated = await super.init();
+        if (!isUpdated.stats) {
+            await this.updateAllStatsCache(isUpdated.serverUpdateTimestamp);
+            console.log("Stats Updated");
+        }
+        for (const uuid of this.uuids)this.stats.set(uuid, JSON.parse(this.storage.getItem(`stats:${uuid}`))["stats"]);
+        return isUpdated;
+    }
+    /** Returns the value of stat `namespace` for `uuid`. */ getStatValue(namespace, uuid) {
+        const uuidStats = this.stats.get(uuid);
+        const namespaceKeys = namespace.split(":");
+        return (uuidStats[`minecraft:${namespaceKeys[0]}`] ?? {
+        })[`minecraft:${namespaceKeys[1]}`] ?? 0;
+    }
+    /** Return an ordered object of UUIDs and their score for the `namespace` statistic.*/ getUUIDScores(namespace) {
+        const statsObject = new Map();
+        for (const uuid of this.uuids){
+            statsObject.set(uuid, this.getStatValue(namespace, uuid));
+        }
+        return statsObject;
+    }
+    /** Update the Stats Cache, storing a record per uuid. */ async updateTargetStatsCache(serverUpdateTimestamp, uuid) {
+        const stats = await this.fetchAPI(`stats/${uuid}`);
+        this.storage.setItem(`stats:${uuid}`, stats);
+        this.storage.setItem(`meta.lastupdated:stats.${uuid}`, serverUpdateTimestamp);
+    }
+    /** Update the Stats Cache of ALL uuids. */ async updateAllStatsCache(serverUpdateTimestamp) {
+        for (const uuid of this.uuids)await this.updateTargetStatsCache(serverUpdateTimestamp, uuid);
+        this.storage.setItem("meta.lastupdated:stats", serverUpdateTimestamp);
+    }
+}
 class PlayerAPI extends CacheManager {
-  /** @type {Map<string,{username:string,skin:string,offline:boolean,advancementCount:number}>} */
-  players = new Map();
-
-  /** Ensure cache is up to date, and prepare properties. */
-  async init() {
-    const isUpdated = await super.init();
-    if (!isUpdated.player) {
-      await this.#updateAllPlayersCache(isUpdated.serverUpdateTimestamp)
-      console.log("Players Updated");
+    players = new Map();
+    /** Ensure cache is up to date, and prepare properties. */ async init() {
+        const isUpdated = await super.init();
+        if (!isUpdated.player) {
+            await this.updateAllPlayersCache(isUpdated.serverUpdateTimestamp);
+            console.log("Players Updated");
+        }
+        for (const uuid of this.uuids)this.players.set(uuid, JSON.parse(this.storage.getItem(`player:${uuid}`)));
+        return isUpdated;
     }
-    /** @type {string[]} */
-    for (const uuid of this.uuids)
-      this.players.set(uuid, JSON.parse(this.storage.getItem(`player:${uuid}`)));
-    return isUpdated;
-  }
-
-  /** Update the Player Cache, storing a record per uuid.
-   * @private
-   * @param {string} serverUpdateTimestamp
-   * @param {string} uuid */
-  //@ts-ignore
-  async #updateTargetPlayerCache(serverUpdateTimestamp, uuid) {
-    const player = await this.fetchAPI(`player/${uuid}`);
-    this.storage.setItem(`player:${uuid}`, player);
-    this.storage.setItem(`meta.lastupdated:player.${uuid}`, serverUpdateTimestamp);
-  }
-
-  /** Update the Player Cache of ALL uuids.
-   * @private
-   * @param {string} serverUpdateTimestamp */
-  //@ts-ignore
-  async #updateAllPlayersCache(serverUpdateTimestamp) {
-    for (const uuid of this.uuids)
-      await this.#updateTargetPlayerCache(serverUpdateTimestamp, uuid);
-    this.storage.setItem("meta.lastupdated:player", serverUpdateTimestamp);
-  }
-
-  /** Get a data URI of the Player's head without hat.
-   * @param {string} uuid
-   * @param {"merge"|"face"|"hat"} mode */
-  getHeadCanvas(uuid, mode="merge") {
-    const player = this.players.get(uuid);
-    const cnv = document.createElement("canvas");
-    cnv.width = 8;
-    cnv.height = 8;
-    const ctx = cnv.getContext("2d");
-    const img = document.createElement("img");
-    img.src = player.offline ? "./img/steve-head.png" : player.skin.replace("http:","https:");
-    img.decode().then(()=>{
-      if (player.offline)
-        return ctx.drawImage(img, 0, 0)
-      if (mode === "merge" || mode === "face")
-        ctx.drawImage(img, -8, -8);
-      if (mode === "merge" || mode === "hat")
-        ctx.drawImage(img, -40, -8);
-    });
-    return cnv;
-  }
+    /** Update the Player Cache, storing a record per uuid. */ async updateTargetPlayerCache(serverUpdateTimestamp, uuid) {
+        const player = await this.fetchAPI(`player/${uuid}`);
+        this.storage.setItem(`player:${uuid}`, player);
+        this.storage.setItem(`meta.lastupdated:player.${uuid}`, serverUpdateTimestamp);
+    }
+    /** Update the Player Cache of ALL uuids. */ async updateAllPlayersCache(serverUpdateTimestamp) {
+        for (const uuid of this.uuids)await this.updateTargetPlayerCache(serverUpdateTimestamp, uuid);
+        this.storage.setItem("meta.lastupdated:player", serverUpdateTimestamp);
+    }
+    /** Get a data URI of the Player's head without hat. */ getHeadCanvas(uuid, mode = "merge") {
+        const player = this.players.get(uuid);
+        const cnv = document.createElement("canvas");
+        cnv.width = 8;
+        cnv.height = 8;
+        const ctx = cnv.getContext("2d");
+        const img = document.createElement("img");
+        img.src = player.offline ? "./img/steve-head.png" : player.skin.replace("http:", "https:");
+        img.decode().then(()=>{
+            if (player.offline) return ctx.drawImage(img, 0, 0);
+            if (mode === "merge" || mode === "face") ctx.drawImage(img, -8, -8);
+            if (mode === "merge" || mode === "hat") ctx.drawImage(img, -40, -8);
+        });
+        return cnv;
+    }
 }
-
 class AdvancementsAPI extends CacheManager {
-  /** @type {Map<string,any>} */
-  advancements = new Map();
-
-  /** Ensure cache is up to date, and prepare properties. */
-  async init() {
-    const isUpdated = await super.init();
-    if (!isUpdated.advancements) {
-      await this.#updateAllAdvancementsCache(isUpdated.serverUpdateTimestamp)
-      console.log("Advancements Updated");
+    advancements = new Map();
+    /** Ensure cache is up to date, and prepare properties. */ async init() {
+        const isUpdated = await super.init();
+        if (!isUpdated.advancements) {
+            await this.updateAllAdvancementsCache(isUpdated.serverUpdateTimestamp);
+            console.log("Advancements Updated");
+        }
+        for (const uuid of this.uuids){
+            const rawAdvancement = JSON.parse(this.storage.getItem(`advancements:${uuid}`) ?? "{}");
+            // remap each criteria item to a date
+            for(const predicate in rawAdvancement["critera"]){
+                rawAdvancement["criteria"][predicate] = new Date(rawAdvancement["criteria"][predicate]);
+            }
+            this.advancements.set(uuid, rawAdvancement);
+        }
+        return isUpdated;
     }
-    /** @type {string[]} */
-    for (const uuid of this.uuids)
-      this.advancements.set(uuid, JSON.parse(this.storage.getItem(`advancements:${uuid}`)));
-    return isUpdated;
-  }
-
-  /** Returns the object containing a done boolean and the criteria completed of advancement `namespace` for `uuid`.
-   * @param {string} uuid - uuid string
-   * @param {string} namespace - namespaced advancement like story/shiny_gear
-   * @returns {{done: boolean, criteria: {[criteria: string]: Date}}}
-   */
-  getNamespaceAdvancement(namespace, uuid) {
-    const uuidAdvancements = this.advancements.get(uuid)
-    const advancementData = uuidAdvancements[`minecraft:${namespace}`] ?? {}
-    /** @type {{[criteria: string]: Date}} */
-    let criteria = Object(); 
-    //Converts all the dates to date objects
-    for (let criterion in advancementData.criteria) {
-      criteria[criterion] = new Date(advancementData.criteria[criterion])
+    /** Gets the `AdvancementProgress` for the given `uuid`. `name` is in the format `category/name`. */ getProgress(name, uuid) {
+        return (this.advancements.get(uuid) ?? {
+        })[`minecraft:${name}`] ?? {
+            done: false,
+            criteria: {
+            }
+        };
     }
-    return {done: advancementData["done"] ?? false, criteria: criteria ?? {}}
-  }
-
-  /** Returns the date of the latest completed criteria and null if not completed yet
-   * @param {string} uuid - uuid string
-   * @param {string} namespace - namespaced advancement like story/shiny_gear
-   * @returns {Date|null} - date of the latest criteria completed
-   */
-  getAdvancementDate(namespace, uuid) {
-    const advancement = this.getNamespaceAdvancement(namespace, uuid)
-    let returnDate;
-    if (!advancement.done) {
-      returnDate = null // returns null if advancement isn't done
-    } else {
-      let dateList = []
-      for (let criterion in advancement.criteria) {
-        dateList.push(advancement.criteria[criterion]) //adds all dates to the list
-      }
-      console.log(dateList)
-      //Sorts the datelist in descending order
-      dateList.sort((a,b)=>{
-        if (a>b){return -1}
-        else if (b>a){return 1}
-        else {return 0}
-      })
-      returnDate = dateList[0] ?? null //null just incase there are no criteria
+    /** Gets the advancement completion date, or null if not completed.*/ getCompletionDate(name, uuid) {
+        const progress = this.getProgress(name, uuid);
+        if (progress.done) return Object.values(progress.criteria).sort((a, b)=>b.valueOf() - a.valueOf()
+        )[0] ?? null;
+        else return null;
     }
-    return returnDate
-  }
-
-  /** Update the Advancements Cache, storing a record per uuid.
-   * @private
-   * @param {string} serverUpdateTimestamp
-   * @param {string} uuid */
-  //@ts-ignore
-  async #updateTargetAdvancementsCache(serverUpdateTimestamp, uuid) {
-    const advancements = await this.fetchAPI(`advancements/${uuid}`);
-    this.storage.setItem(`advancements:${uuid}`, advancements);
-    this.storage.setItem(`meta.lastupdated:advancements.${uuid}`, serverUpdateTimestamp);
-  }
-
-  /** Update the Advancements Cache of ALL uuids.
-   * @private
-   * @param {string} serverUpdateTimestamp */
-  //@ts-ignore
-  async #updateAllAdvancementsCache(serverUpdateTimestamp) {
-    for (const uuid of this.uuids)
-      await this.#updateTargetAdvancementsCache(serverUpdateTimestamp, uuid);
-    this.storage.setItem("meta.lastupdated:advancements", serverUpdateTimestamp);
-  }
+    /** Update the Advancements Cache, storing a record per uuid. */ async updateTargetAdvancementsCache(serverUpdateTimestamp, uuid) {
+        const advancements = await this.fetchAPI(`advancements/${uuid}`);
+        this.storage.setItem(`advancements:${uuid}`, advancements);
+        this.storage.setItem(`meta.lastupdated:advancements.${uuid}`, serverUpdateTimestamp);
+    }
+    /** Update the Advancements Cache of ALL uuids. */ async updateAllAdvancementsCache(serverUpdateTimestamp) {
+        for (const uuid of this.uuids)await this.updateTargetAdvancementsCache(serverUpdateTimestamp, uuid);
+        this.storage.setItem("meta.lastupdated:advancements", serverUpdateTimestamp);
+    }
 }

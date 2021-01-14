@@ -1,5 +1,10 @@
 {
 	"editor.tabSize": 2,
 	"editor.detectIndentation": true,
-	"editor.insertSpaces": true
+	"editor.insertSpaces": true,
+	"deno.enable": false,
+	"deno.unstable": true,
+	"deno.import_intellisense_origins": {
+		"https://deno.land": true
+	}
 }
