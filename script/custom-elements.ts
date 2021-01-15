@@ -147,25 +147,36 @@ class MCAdvancementContainer extends HTMLElement {
     husbandry: {rows: 13, columns: 6}
   }
 
+
+
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   advancementStyling = `
     mc-advancement {
       padding: 3px;
       display: inline-block;
-      box-sizing: border-box;
 
-      border: 2px #000000;
-      border-radius: 4px;
-
-      background-color: #eaeaea;
+      background-size: cover;
+      background-image: url(./img/gui/advancement-normal.png);
     }
 
-    mc-advancement[type="challenge"] {}
+    mc-advancement[type="challenge"] {
+      background-image: url(./img/gui/advancement-challenge.png);
+    }
 
-    mc-advancement[type="goal"] {}
+    mc-advancement[type="goal"] {
+      background-image: url(./img/gui/advancement-goal.png);
+    }
 
     mc-advancement[done="true"] {
-      background-color: #ffd972;
+      background-image: url(./img/gui/advancement-normal-done.png);
+    }
+
+    mc-advancement[done="true"][type="goal"] {
+      background-image: url(./img/gui/advancement-goal-done.png);
+    }
+
+    mc-advancement[done="true"][type="challenge"] {
+      background-image: url(./img/gui/advancement-challenge-done.png);
     }
   `
 }
