@@ -612,25 +612,31 @@ const faceTextures = {
     }
 };
 class MCItemIcon extends HTMLElement {
+    static get observedAttributes() {
+        return [
+            "name",
+            "type",
+            "enchanted",
+            "res"
+        ];
+    }
+    renderer = null;
+    displayType = "none";
+    itemName = "";
+    enchanted = false;
+    resolution = 64;
     constructor(){
         super();
         this.shadow = this.attachShadow({
             mode: "closed"
         });
-        this.displayType = this.attributes.getNamedItem("type")?.value ?? "block";
-        this.itemName = this.attributes.getNamedItem("name")?.value ?? "cobblestone";
-        this.enchanted = this.attributes.getNamedItem("enchanted") != null;
-        this.resolution = Number(this.attributes.getNamedItem("res")?.value) ?? 64;
         this.itemCanvas = document.createElement("canvas");
-        this.renderer = new Renderer(this.itemCanvas);
-        this.drawCanvas();
         const style = document.createElement("style");
         style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
         this.shadow.append(style, this.itemCanvas);
     }
     async drawCanvas() {
         if (this.displayType == "block") {
-            console.log("ICON::BLOCL");
             const [topTexture, leftTexture, rightTexture] = await Promise.all([
                 loadTexture(faceTextures[this.itemName].top),
                 faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left) : null,
@@ -638,24 +644,47 @@ class MCItemIcon extends HTMLElement {
             ]);
             this.renderer.renderQuad(faces.top, topTexture);
             this.renderer.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
-                return {
-                    r: colour.r * 0.8,
-                    g: colour.g * 0.8,
-                    b: colour.b * 0.8,
-                    a: colour.a
-                };
+                return brightness(colour, 0.8);
             });
             this.renderer.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
-                return {
-                    r: colour.r * 0.6,
-                    g: colour.g * 0.6,
-                    b: colour.b * 0.6,
-                    a: colour.a
-                };
+                return brightness(colour, 0.6);
             });
-        } else {
+        } else if (this.displayType == "item") {
             const itemTexture = await loadTexture(faceTextures[this.itemName].top);
             this.renderer.renderQuad(faces.flat, itemTexture);
+        } else {
+            const itemTexture = await loadTexture(`${imageDir}block/missing.png`);
+            this.renderer.renderQuad(faces.flat, itemTexture);
+        }
+    }
+    connectedCallback() {
+        const typeAttr = this.getAttribute("type");
+        const nameAttr = this.getAttribute("name") || "";
+        this.resolution = Number(this.getAttribute("res")) || 64;
+        this.enchanted = this.hasAttribute("enchanted");
+        if (typeAttr == "block" || typeAttr == "item") this.displayType = typeAttr;
+        if (nameAttr in faceTextures) this.itemName = nameAttr;
+        else this.displayType = "none";
+        this.itemCanvas.width = this.resolution;
+        this.itemCanvas.height = this.resolution;
+        this.renderer = new Renderer(this.itemCanvas);
+        this.drawCanvas();
+    }
+    attributeChangedCallback(attrName, oldVal, newVal) {
+        switch(attrName){
+            case "type":
+                if (newVal == "block" || newVal == "item") this.displayType = newVal;
+                break;
+            case "name":
+                if (newVal in Object.keys(faceTextures)) this.itemName = newVal;
+                else this.displayType = "none";
+                break;
+            case "enchanted":
+                this.enchanted = this.hasAttribute("enchanted");
+                break;
+            case "res":
+                this.resolution = Number(this.getAttribute("res")) || 64;
+                break;
         }
     }
 }

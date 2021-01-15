@@ -78,6 +78,14 @@ function setPixel(imageData, colour, point) {
         colour.a, 
     ], pixelIndex);
 }
+function brightness(colour, value) {
+    return {
+        r: colour.r * value,
+        g: colour.g * value,
+        b: colour.b * value,
+        a: colour.a
+    };
+}
 async function loadTexture(src) {
     const img = new Image();
     img.src = src;
