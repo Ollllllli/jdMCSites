@@ -579,5 +579,88 @@ class MCAdvancementContainer extends HTMLElement {
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
     advancementStyling = `\n    mc-advancement {\n      padding: 3px;\n      display: inline-block;\n      box-sizing: border-box;\n\n      border: 2px #000000;\n      border-radius: 4px;\n\n      background-color: #eaeaea;\n    }\n\n    mc-advancement[type="challenge"] {}\n\n    mc-advancement[type="goal"] {}\n\n    mc-advancement[done="true"] {\n      background-color: #ffd972;\n    }\n  `;
 }
+const imageDir = document.currentScript.src + "/../../img/";
+const faces = {
+    top: {
+        topLeft: new UVCoord(0.5, 0),
+        bottomLeft: new UVCoord(0.05, 0.225),
+        bottomRight: new UVCoord(0.5, 0.45),
+        topRight: new UVCoord(0.95, 0.225)
+    },
+    left: {
+        topLeft: new UVCoord(0.05, 0.225),
+        bottomLeft: new UVCoord(0.05, 0.775),
+        bottomRight: new UVCoord(0.5, 1),
+        topRight: new UVCoord(0.5, 0.45)
+    },
+    right: {
+        topLeft: new UVCoord(0.5, 0.45),
+        bottomLeft: new UVCoord(0.5, 1),
+        bottomRight: new UVCoord(0.95, 0.775),
+        topRight: new UVCoord(0.95, 0.225)
+    },
+    flat: {
+        topLeft: new UVCoord(0, 0),
+        bottomLeft: new UVCoord(0, 1),
+        bottomRight: new UVCoord(1, 1),
+        topRight: new UVCoord(1, 0)
+    }
+};
+const faceTextures = {
+    cobblestone: {
+        top: `${imageDir}block/cobblestone.png`
+    }
+};
+class MCItemIcon extends HTMLElement {
+    constructor(){
+        super();
+        this.shadow = this.attachShadow({
+            mode: "closed"
+        });
+        this.displayType = this.attributes.getNamedItem("type")?.value ?? "block";
+        this.itemName = this.attributes.getNamedItem("name")?.value ?? "cobblestone";
+        this.enchanted = this.attributes.getNamedItem("enchanted") != null;
+        this.resolution = Number(this.attributes.getNamedItem("res")?.value) ?? 64;
+        this.itemCanvas = document.createElement("canvas");
+        this.renderer = new Renderer(this.itemCanvas);
+        this.drawCanvas();
+        const style = document.createElement("style");
+        style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
+        this.shadow.append(style, this.itemCanvas);
+    }
+    async drawCanvas() {
+        if (this.displayType == "block") {
+            console.log("ICON::BLOCL");
+            const [topTexture, leftTexture, rightTexture] = await Promise.all([
+                loadTexture(faceTextures[this.itemName].top),
+                faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left) : null,
+                faceTextures[this.itemName].right != undefined ? loadTexture(faceTextures[this.itemName].right) : null, 
+            ]);
+            this.renderer.renderQuad(faces.top, topTexture);
+            this.renderer.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
+                return {
+                    r: colour.r * 0.8,
+                    g: colour.g * 0.8,
+                    b: colour.b * 0.8,
+                    a: colour.a
+                };
+            });
+            this.renderer.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
+                return {
+                    r: colour.r * 0.6,
+                    g: colour.g * 0.6,
+                    b: colour.b * 0.6,
+                    a: colour.a
+                };
+            });
+        } else {
+            const itemTexture = await loadTexture(faceTextures[this.itemName].top);
+            this.renderer.renderQuad(faces.flat, itemTexture);
+        }
+    }
+}
+// new MCItemIcon({ type: "block", name: "cobblestone" });
+document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 5em;\n      height: 5em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-item-icon', MCItemIcon);

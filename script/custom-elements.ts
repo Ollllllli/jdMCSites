@@ -170,5 +170,123 @@ class MCAdvancementContainer extends HTMLElement {
   `
 }
 
+interface MCItemIconOptions {
+  type: "block" | "item";
+  name: string;
+  enchanted?: true;
+}
+
+const imageDir = (document.currentScript as HTMLScriptElement).src+"/../../img/";
+const faces = {
+  top: {
+    topLeft:      new UVCoord(0.50,0.000),
+    bottomLeft:   new UVCoord(0.05,0.225),
+    bottomRight:  new UVCoord(0.50,0.450),
+    topRight:     new UVCoord(0.95,0.225),
+  },
+  left: {
+    topLeft:      new UVCoord(0.05,0.225),
+    bottomLeft:   new UVCoord(0.05,0.775),
+    bottomRight:  new UVCoord(0.50,1.000),
+    topRight:     new UVCoord(0.50,0.450),
+  },
+  right: {
+    topLeft:      new UVCoord(0.50,0.450),
+    bottomLeft:   new UVCoord(0.50,1.000),
+    bottomRight:  new UVCoord(0.95,0.775),
+    topRight:     new UVCoord(0.95,0.225),
+  },
+  flat: {
+    topLeft:      new UVCoord(0.00,0.000),
+    bottomLeft:   new UVCoord(0.00,1.000),
+    bottomRight:  new UVCoord(1.00,1.000),
+    topRight:     new UVCoord(1.00,0.000),
+  },
+} as const;
+
+const faceTextures: Record<string,{top:string,left?:string,right?:string}> = {
+  cobblestone: {
+    top: `${imageDir}block/cobblestone.png`,
+  },
+};
+
+class MCItemIcon extends HTMLElement {
+
+  private shadow: ShadowRoot;
+
+  private displayType: "block" | "item";
+  private itemName: string;
+  private enchanted: boolean;
+  private itemCanvas: HTMLCanvasElement;
+  private renderer: Renderer;
+  private resolution: number;
+
+  constructor() {
+    super();
+    this.shadow = this.attachShadow({mode: "closed"});
+    this.displayType = this.attributes.getNamedItem("type")?.value as any ?? "block";
+    this.itemName = this.attributes.getNamedItem("name")?.value ?? "cobblestone";
+    this.enchanted = this.attributes.getNamedItem("enchanted") != null;
+    this.resolution = Number(this.attributes.getNamedItem("res")?.value) ?? 64;
+    this.itemCanvas = document.createElement("canvas");
+    this.renderer = new Renderer(this.itemCanvas);
+
+    this.drawCanvas();
+
+    const style = document.createElement("style");
+    style.textContent = `
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+    `;
+    this.shadow.append(style, this.itemCanvas);
+  }
+
+  private async drawCanvas() {
+    if (this.displayType == "block") {
+      console.log("ICON::BLOCL")
+      const [topTexture, leftTexture, rightTexture] = await Promise.all([
+        loadTexture(faceTextures[this.itemName].top),
+        faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left!) : null,
+        faceTextures[this.itemName].right != undefined ? loadTexture(faceTextures[this.itemName].right!) : null,
+      ]);
+      this.renderer.renderQuad(faces.top, topTexture);
+      this.renderer.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
+        return {
+          r: colour.r * 0.8,
+          g: colour.g * 0.8,
+          b: colour.b * 0.8,
+          a: colour.a,
+        };
+      });
+      this.renderer.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
+        return {
+          r: colour.r * 0.6,
+          g: colour.g * 0.6,
+          b: colour.b * 0.6,
+          a: colour.a,
+        };
+      });
+    }
+    else {
+      const itemTexture = await loadTexture(faceTextures[this.itemName].top);
+      this.renderer.renderQuad(faces.flat, itemTexture);
+    }
+  }
+}
+// new MCItemIcon({ type: "block", name: "cobblestone" });
+
+document.head.insertAdjacentHTML("afterbegin", `
+  <style>
+    mc-item-icon {
+      display: inline-block;
+      width: 5em;
+      height: 5em;
+    }
+  </style>
+`);
+
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-item-icon', MCItemIcon);
