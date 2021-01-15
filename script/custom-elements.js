@@ -1,15 +1,15 @@
+const advancementAttributes = [
+    'col',
+    'row',
+    'ns',
+    'done',
+    'type',
+    'route'
+];
 class MCAdvancement extends HTMLElement {
-    static advancementAttributes = [
-        'col',
-        'row',
-        'ns',
-        'done',
-        'type',
-        'route'
-    ];
     // Needed for attributeChangedCallback
     static get observedAttributes() {
-        return this.advancementAttributes;
+        return advancementAttributes;
     }
     shadow = this.attachShadow({
         mode: 'open'
@@ -44,7 +44,7 @@ class MCAdvancement extends HTMLElement {
     //When element is added to DOM
     connectedCallback() {
         //Goes through the attributes and updates their respective function
-        for (const att of MCAdvancement.advancementAttributes){
+        for (const att of advancementAttributes){
             this.updateElement(att);
         }
     }
@@ -99,7 +99,7 @@ class MCAdvancementContainer extends HTMLElement {
         containerStyle.innerHTML = this.advancementStyling;
         this.appendChild(containerStyle);
         const category = this.getAttribute("category");
-        if (advancementCategories.includes(category)) {
+        if (category in advancementCategories) {
             const advancementContainer = this.generateAdvancementDiv(category);
             this.appendChild(advancementContainer);
         }
@@ -110,7 +110,7 @@ class MCAdvancementContainer extends HTMLElement {
             const category = newValue;
             const gridDiv = this.querySelector("div");
             if (gridDiv) gridDiv.remove();
-            if (advancementCategories.includes(category)) {
+            if (category in advancementCategories) {
                 const advancementContainer = this.generateAdvancementDiv(category);
                 this.appendChild(advancementContainer);
             }
@@ -624,7 +624,8 @@ class MCItemIcon extends HTMLElement {
     displayType = "none";
     itemName = "";
     enchanted = false;
-    resolution = 64;
+    defaultRes = 256;
+    resolution = this.defaultRes;
     constructor(){
         super();
         this.shadow = this.attachShadow({
@@ -660,7 +661,7 @@ class MCItemIcon extends HTMLElement {
     connectedCallback() {
         const typeAttr = this.getAttribute("type");
         const nameAttr = this.getAttribute("name") || "";
-        this.resolution = Number(this.getAttribute("res")) || 64;
+        this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
         this.enchanted = this.hasAttribute("enchanted");
         if (typeAttr == "block" || typeAttr == "item") this.displayType = typeAttr;
         if (nameAttr in faceTextures) this.itemName = nameAttr;
@@ -683,13 +684,13 @@ class MCItemIcon extends HTMLElement {
                 this.enchanted = this.hasAttribute("enchanted");
                 break;
             case "res":
-                this.resolution = Number(this.getAttribute("res")) || 64;
+                this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
                 break;
         }
     }
 }
 // new MCItemIcon({ type: "block", name: "cobblestone" });
-document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 5em;\n      height: 5em;\n    }\n  </style>\n`);
+document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
 customElements.define('mc-item-icon', MCItemIcon);

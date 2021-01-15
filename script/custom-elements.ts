@@ -1,14 +1,14 @@
+const advancementAttributes = ['col','row','ns','done','type','route'] as const;
+
 class MCAdvancement extends HTMLElement {
-  
-  private static advancementAttributes = ['col','row','ns','done','type','route'] as const;
   
   // Needed for attributeChangedCallback
   static get observedAttributes() {
-    return this.advancementAttributes;
+    return advancementAttributes;
   }
 
   shadow = this.attachShadow({mode: 'open'});
-  savedAttributes: Record<typeof MCAdvancement.advancementAttributes[number], string | null> = {
+  savedAttributes: Record<typeof advancementAttributes[number], string | null> = {
     col: null,
     row: null,
     ns: "",
@@ -22,7 +22,7 @@ class MCAdvancement extends HTMLElement {
     this.shadow.appendChild(document.createElement('img'));
   }
 
-  private updateElement(attribute: typeof MCAdvancement.advancementAttributes[number]) {
+  private updateElement(attribute: typeof advancementAttributes[number]) {
     //only fires if the attribute not null, meaning only set attributes are used
     if (this.savedAttributes[attribute] !== null) {
       switch (attribute) {
@@ -41,13 +41,13 @@ class MCAdvancement extends HTMLElement {
   //When element is added to DOM
   connectedCallback() {
     //Goes through the attributes and updates their respective function
-    for (const att of MCAdvancement.advancementAttributes) {
+    for (const att of advancementAttributes) {
       this.updateElement(att);
     }
   }
 
   //When an attribute is changed
-  attributeChangedCallback(name: typeof MCAdvancement.advancementAttributes[number], _: never, newValue: string) {
+  attributeChangedCallback(name: typeof advancementAttributes[number], _: never, newValue: string) {
     this.savedAttributes[name] = newValue;
     this.updateElement(name);
   }
@@ -109,7 +109,7 @@ class MCAdvancementContainer extends HTMLElement {
     this.appendChild(containerStyle);
     
     const category = this.getAttribute("category");
-    if (advancementCategories.includes(category as any)) {
+    if (category as any in advancementCategories) {
       const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementContainer);
     }
@@ -123,7 +123,7 @@ class MCAdvancementContainer extends HTMLElement {
       if (gridDiv)
         gridDiv.remove();
 
-      if (advancementCategories.includes(category as any)) {
+      if (category as any in advancementCategories) {
         const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
         this.appendChild(advancementContainer);
       }
@@ -233,7 +233,8 @@ class MCItemIcon extends HTMLElement {
   private displayType: "block" | "item" | "none" = "none";
   private itemName: string = "";
   private enchanted: boolean = false;
-  private resolution: number = 64;
+  private defaultRes = 256;
+  private resolution: number = this.defaultRes;
 
   constructor() {
     super();
@@ -278,7 +279,7 @@ class MCItemIcon extends HTMLElement {
   connectedCallback() {
     const typeAttr = this.getAttribute("type");
     const nameAttr = this.getAttribute("name") || "";
-    this.resolution = Number(this.getAttribute("res")) || 64;
+    this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
     this.enchanted = this.hasAttribute("enchanted");
     if (typeAttr == "block" || typeAttr == "item")
       this.displayType = typeAttr;
@@ -309,7 +310,7 @@ class MCItemIcon extends HTMLElement {
         this.enchanted = this.hasAttribute("enchanted");
         break;
       case "res":
-        this.resolution = Number(this.getAttribute("res")) || 64;
+        this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
         break;
     }
   }
@@ -321,8 +322,8 @@ document.head.insertAdjacentHTML("afterbegin", `
   <style>
     mc-item-icon {
       display: inline-block;
-      width: 5em;
-      height: 5em;
+      width: 30em;
+      height: 30em;
     }
   </style>
 `);
