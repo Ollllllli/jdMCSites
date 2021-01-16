@@ -1,28 +1,28 @@
-const advancementAttributes = ['col','row','ns','done','type','route'] as const;
+type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: ["item"|"block", string, "enchanted"?] } }
 
 class MCAdvancement extends HTMLElement {
   
+  private static advancementAttributes = ['col','row','ns','done','type'] as const;
+  
   // Needed for attributeChangedCallback
   static get observedAttributes() {
-    return advancementAttributes;
+    return MCAdvancement.advancementAttributes;
   }
 
   shadow = this.attachShadow({mode: 'open'});
-  savedAttributes: Record<typeof advancementAttributes[number], string | null> = {
+  savedAttributes: Record<typeof MCAdvancement.advancementAttributes[number], string | null> = {
     col: null,
     row: null,
-    ns: "",
-    route: "./img/",
+    ns: "story/root",
     done: "false",
     type: "normal",
   };
 
   constructor() {
     super();
-    this.shadow.appendChild(document.createElement('img'));
   }
 
-  private updateElement(attribute: typeof advancementAttributes[number]) {
+  private updateElement(attribute: typeof MCAdvancement.advancementAttributes[number]) {
     //only fires if the attribute not null, meaning only set attributes are used
     if (this.savedAttributes[attribute] !== null) {
       switch (attribute) {
@@ -31,8 +31,15 @@ class MCAdvancement extends HTMLElement {
           this.style.gridArea = `${this.savedAttributes.row}/${this.savedAttributes.col}/${String(Number(this.savedAttributes.row)+2)}/${String(Number(this.savedAttributes.col)+2)}`;
           break;
         case 'ns':
-        case 'route':
-          this.shadow.querySelector("img")!.src = `${this.savedAttributes.route}${this.savedAttributes.ns}.png`;
+          //For typescript as savedAttributes['ns'] is string|null
+          if (this.savedAttributes['ns']) {
+            const nsSplit = (this.savedAttributes['ns']).split("/");
+            if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0] as AdvancementCategory]) {
+              const mappedArray = this.advancementIcons[nsSplit[0] as AdvancementCategory][nsSplit[1]];
+              const enchanted = (mappedArray.includes("enchanted")) ? " enchanted" : "";
+              this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}"${enchanted}></mc-item-icon>`;
+            }
+          }
           break;
       }
     }
@@ -41,15 +48,23 @@ class MCAdvancement extends HTMLElement {
   //When element is added to DOM
   connectedCallback() {
     //Goes through the attributes and updates their respective function
-    for (const att of advancementAttributes) {
+    for (const att of MCAdvancement.advancementAttributes) {
       this.updateElement(att);
     }
   }
 
   //When an attribute is changed
-  attributeChangedCallback(name: typeof advancementAttributes[number], _: never, newValue: string) {
+  attributeChangedCallback(name: typeof MCAdvancement.advancementAttributes[number], _: never, newValue: string) {
     this.savedAttributes[name] = newValue;
     this.updateElement(name);
+  }
+
+  advancementIcons: AdvancementIconMap = {
+    story: {root: ["block","grass_block"], mine_stone: ["item","wooden_pickaxe"], upgrade_tools: ["item","stone_pickaxe"], smelt_iron: ["item","iron_ingot"], obtain_armor: ["item","iron_chestplate"], lava_bucket: ["item","lava_bucket"], iron_tools: ["item","iron_pickaxe"], deflect_arrow: ["item","shield"], form_obsidian: ["block","obsidian"], mine_diamond: ["item","diamond"], enter_the_nether: ["item","flint_and_steel"], shiny_gear: ["item","diamond_chestplate"], enchant_item: ["item","enchanted_book","enchanted"], cure_zombie_villager: ["item","golden_apple"], follow_ender_eye: ["item","ender_eye"], enter_the_end: ["block","end_stone"]},
+    nether: {root: ["block","red_nether_bricks"], return_to_sender: ["item","fire_charge"], find_bastion: ["block","polished_blackstone_bricks"], obtain_ancient_debris: ["block","ancient_debris"], fast_travel: ["item", "map"], find_fortress: ["block", "nether_bricks"], obtain_crying_obsidian: ["block","crying_obsidian"], distract_piglin: ["item","gold_ingot"], ride_strider: ["item","warped_fungus_on_a_stick"], uneasy_alliance: ["item","ghast_tear"], loot_bastion: ["item","chest"], use_lodestone: ["block","lodestone"], netherite_armor: ["item","netherite_chestplate"], get_wither_skull: ["item","wither_skeleton_skull"], obtain_blaze_rod: ["item","blaze_rod"], charge_respawn_anchor: ["block","respawn_anchor_0"], explore_nether: ["item","netherite_boots"], summon_wither: ["item","nether_star","enchanted"], brew_potion: ["item","uncraftable_potion"], create_beacon: ["block","beacon"], all_potions: ["item","milk_bucket"], create_full_beacon: ["block","beacon"], all_effects: ["item","bucket"]},
+    end: {root: ["block","end_stone"], kill_dragon: ["item","dragon_head"], dragon_egg: ["item","dragon_egg"], enter_end_gateway: ["item","ender_pearl"], respawn_dragon: ["item","end_crystal","enchanted"], dragon_breath: ["item","dragon_breath"], find_end_city: ["block","purpur_block"], elytra: ["item","elytra"], levitate: ["item","shulker_shell"]},
+    adventure: {root: ["item","map"], voluntary_exile: ["item","ominous_banner"], kill_a_mob: ["item","iron_sword"], trade: ["item","emerald"], honey_block_slide: ["block","honey_block"], ol_betsy: ["item","crossbow_standby"], sleep_in_bed: ["item","red_bed"], hero_of_the_village: ["item","ominous_banner"], throw_trident: ["item","trident"], shoot_arrow: ["item", "bow"], kill_all_mobs: ["item","diamond_sword"], totem_of_undying: ["item","totem_of_undying"], summon_iron_golem: ["block","carved_pumpkin"], two_birds_one_arrow: ["item","crossbow_standby"], whos_the_pillager_now: ["item","crossbow_standby"], arbalistic: ["item","crossbow_standby"], adventuring_time: ["item","diamond_boots"], very_very_frightening: ["item","trident"], sniper_duel: ["item","arrow"], bullseye: ["block","target"]},
+    husbandry: {root: ["block","hay_block"], safely_harvest_honey: ["item","honey_bottle"], breed_an_animal: ["item","wheat"], tame_an_animal: ["item","lead"], fishy_business: ["item","fishing_rod"], silk_touch_nest: ["block","bee_nest"], plant_seed: ["item","wheat"], bred_all_animals: ["item","golden_carrot"], complete_catalogue: ["item","cod"], tactical_fishing: ["item","pufferfish_bucket"], balanced_diet: ["item","apple"], obtain_netherite_hoe: ["item","netherite_hoe"]},
   }
 }
 
@@ -109,7 +124,7 @@ class MCAdvancementContainer extends HTMLElement {
     this.appendChild(containerStyle);
     
     const category = this.getAttribute("category");
-    if (category as any in advancementCategories) {
+    if (advancementCategories.includes(category as AdvancementCategory)) {
       const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementContainer);
     }
@@ -118,12 +133,12 @@ class MCAdvancementContainer extends HTMLElement {
   //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
   attributeChangedCallback(name: string, _: never, newValue: string) {
     if (name == "category") {
+      console.log("category")
       const category = newValue;
       const gridDiv = this.querySelector("div");
       if (gridDiv)
         gridDiv.remove();
-
-      if (category as any in advancementCategories) {
+      if (advancementCategories.includes(category as AdvancementCategory)) {
         const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
         this.appendChild(advancementContainer);
       }
@@ -146,8 +161,6 @@ class MCAdvancementContainer extends HTMLElement {
     adventure: {rows: 21, columns: 8},
     husbandry: {rows: 13, columns: 6}
   }
-
-
 
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   advancementStyling = `
