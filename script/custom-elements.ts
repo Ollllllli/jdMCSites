@@ -6,7 +6,7 @@ class MCAdvancement extends HTMLElement {
   
   // Needed for attributeChangedCallback
   static get observedAttributes() {
-    return this.advancementAttributes;
+    return MCAdvancement.advancementAttributes;
   }
 
   shadow = this.attachShadow({mode: 'open'});
@@ -124,7 +124,7 @@ class MCAdvancementContainer extends HTMLElement {
     this.appendChild(containerStyle);
     
     const category = this.getAttribute("category");
-    if (advancementCategories.includes(category as any)) {
+    if (category as any in advancementCategories) {
       const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementContainer);
     }
@@ -138,7 +138,7 @@ class MCAdvancementContainer extends HTMLElement {
       if (gridDiv)
         gridDiv.remove();
 
-      if (advancementCategories.includes(category as any)) {
+      if (category as any in advancementCategories) {
         const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
         this.appendChild(advancementContainer);
       }
@@ -161,7 +161,9 @@ class MCAdvancementContainer extends HTMLElement {
     adventure: {rows: 21, columns: 8},
     husbandry: {rows: 13, columns: 6}
   }
-  
+
+
+
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   advancementStyling = `
     mc-advancement {
@@ -194,5 +196,153 @@ class MCAdvancementContainer extends HTMLElement {
   `
 }
 
+interface MCItemIconOptions {
+  type: "block" | "item";
+  name: string;
+  enchanted?: true;
+}
+
+const imageDir = (document.currentScript as HTMLScriptElement).src+"/../../img/";
+const faces = {
+  top: {
+    topLeft:      new UVCoord(0.50,0.000),
+    bottomLeft:   new UVCoord(0.05,0.225),
+    bottomRight:  new UVCoord(0.50,0.450),
+    topRight:     new UVCoord(0.95,0.225),
+  },
+  left: {
+    topLeft:      new UVCoord(0.05,0.225),
+    bottomLeft:   new UVCoord(0.05,0.775),
+    bottomRight:  new UVCoord(0.50,1.000),
+    topRight:     new UVCoord(0.50,0.450),
+  },
+  right: {
+    topLeft:      new UVCoord(0.50,0.450),
+    bottomLeft:   new UVCoord(0.50,1.000),
+    bottomRight:  new UVCoord(0.95,0.775),
+    topRight:     new UVCoord(0.95,0.225),
+  },
+  flat: {
+    topLeft:      new UVCoord(0.00,0.000),
+    bottomLeft:   new UVCoord(0.00,1.000),
+    bottomRight:  new UVCoord(1.00,1.000),
+    topRight:     new UVCoord(1.00,0.000),
+  },
+} as const;
+
+const faceTextures: Record<string,{top:string,left?:string,right?:string}> = {
+  cobblestone: {
+    top: `${imageDir}block/cobblestone.png`,
+  },
+};
+
+class MCItemIcon extends HTMLElement {
+
+  static get observedAttributes() {
+    return ["name", "type", "enchanted", "res"] as const;
+  }
+
+  private shadow: ShadowRoot;
+  private itemCanvas: HTMLCanvasElement;
+  private renderer: Renderer | null = null;
+  private displayType: "block" | "item" | "none" = "none";
+  private itemName: string = "";
+  private enchanted: boolean = false;
+  private defaultRes = 256;
+  private resolution: number = this.defaultRes;
+
+  constructor() {
+    super();
+    this.shadow = this.attachShadow({mode: "closed"});
+    this.itemCanvas = document.createElement("canvas");
+    
+    const style = document.createElement("style");
+    style.textContent = `
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+    `;
+    this.shadow.append(style, this.itemCanvas);
+  }
+
+  private async drawCanvas() {
+    if (this.displayType == "block") {
+      const [topTexture, leftTexture, rightTexture] = await Promise.all([
+        loadTexture(faceTextures[this.itemName].top),
+        faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left!) : null,
+        faceTextures[this.itemName].right != undefined ? loadTexture(faceTextures[this.itemName].right!) : null,
+      ]);
+      this.renderer!.renderQuad(faces.top, topTexture);
+      this.renderer!.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
+        return brightness(colour, 0.8);
+      });
+      this.renderer!.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
+        return brightness(colour, 0.6);
+      });
+    }
+    else if (this.displayType == "item") {
+      const itemTexture = await loadTexture(faceTextures[this.itemName].top);
+      this.renderer!.renderQuad(faces.flat, itemTexture);
+    }
+    else {
+      const itemTexture = await loadTexture(`${imageDir}block/missing.png`);
+      this.renderer!.renderQuad(faces.flat, itemTexture);
+    }
+  }
+
+  connectedCallback() {
+    const typeAttr = this.getAttribute("type");
+    const nameAttr = this.getAttribute("name") || "";
+    this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
+    this.enchanted = this.hasAttribute("enchanted");
+    if (typeAttr == "block" || typeAttr == "item")
+      this.displayType = typeAttr;
+    if (nameAttr in faceTextures)
+      this.itemName = nameAttr;
+    else
+      this.displayType = "none";
+
+    this.itemCanvas.width = this.resolution;
+    this.itemCanvas.height = this.resolution;
+    this.renderer = new Renderer(this.itemCanvas);
+    this.drawCanvas();
+  }
+
+  attributeChangedCallback(attrName: typeof MCItemIcon["observedAttributes"][number], oldVal: string, newVal: string) {
+    switch (attrName) {
+      case "type":
+        if (newVal == "block" || newVal == "item")
+          this.displayType = newVal;
+        break;
+      case "name":
+        if (newVal in Object.keys(faceTextures))
+          this.itemName = newVal;
+        else
+          this.displayType = "none";
+        break;
+      case "enchanted":
+        this.enchanted = this.hasAttribute("enchanted");
+        break;
+      case "res":
+        this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
+        break;
+    }
+  }
+
+}
+// new MCItemIcon({ type: "block", name: "cobblestone" });
+
+document.head.insertAdjacentHTML("afterbegin", `
+  <style>
+    mc-item-icon {
+      display: inline-block;
+      width: 30em;
+      height: 30em;
+    }
+  </style>
+`);
+
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-item-icon', MCItemIcon);

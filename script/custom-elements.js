@@ -1,14 +1,15 @@
+const advancementAttributes = [
+    'col',
+    'row',
+    'ns',
+    'done',
+    'type',
+    'route'
+];
 class MCAdvancement extends HTMLElement {
-    static advancementAttributes = [
-        'col',
-        'row',
-        'ns',
-        'done',
-        'type'
-    ];
     // Needed for attributeChangedCallback
     static get observedAttributes() {
-        return this.advancementAttributes;
+        return advancementAttributes;
     }
     shadow = this.attachShadow({
         mode: 'open'
@@ -16,12 +17,14 @@ class MCAdvancement extends HTMLElement {
     savedAttributes = {
         col: null,
         row: null,
-        ns: "story/root",
+        ns: "",
+        route: "./img/",
         done: "false",
         type: "normal"
     };
     constructor(){
         super();
+        this.shadow.appendChild(document.createElement('img'));
     }
     updateElement(attribute) {
         //only fires if the attribute not null, meaning only set attributes are used
@@ -32,15 +35,8 @@ class MCAdvancement extends HTMLElement {
                     this.style.gridArea = `${this.savedAttributes.row}/${this.savedAttributes.col}/${String(Number(this.savedAttributes.row) + 2)}/${String(Number(this.savedAttributes.col) + 2)}`;
                     break;
                 case 'ns':
-                    //For typescript as savedAttributes['ns'] is string|null
-                    if (this.savedAttributes['ns']) {
-                        const nsSplit = this.savedAttributes['ns'].split("/");
-                        if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0]]) {
-                            const mappedArray = this.advancementIcons[nsSplit[0]][nsSplit[1]];
-                            const enchanted = mappedArray.includes("enchanted") ? " enchanted" : "";
-                            this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}" res="48"${enchanted}></mc-item-icon>`;
-                        }
-                    }
+                case 'route':
+                    this.shadow.querySelector("img").src = `${this.savedAttributes.route}${this.savedAttributes.ns}.png`;
                     break;
             }
         }
@@ -48,7 +44,7 @@ class MCAdvancement extends HTMLElement {
     //When element is added to DOM
     connectedCallback() {
         //Goes through the attributes and updates their respective function
-        for (const att of MCAdvancement.advancementAttributes){
+        for (const att of advancementAttributes){
             this.updateElement(att);
         }
     }
@@ -57,341 +53,6 @@ class MCAdvancement extends HTMLElement {
         this.savedAttributes[name] = newValue;
         this.updateElement(name);
     }
-    advancementIcons = {
-        story: {
-            root: [
-                "block",
-                "grass_block"
-            ],
-            mine_stone: [
-                "item",
-                "wooden_pickaxe"
-            ],
-            upgrade_tools: [
-                "item",
-                "stone_pickaxe"
-            ],
-            smelt_iron: [
-                "item",
-                "iron_ingot"
-            ],
-            obtain_armor: [
-                "item",
-                "iron_chestplate"
-            ],
-            lava_bucket: [
-                "item",
-                "lava_bucket"
-            ],
-            iron_tools: [
-                "item",
-                "iron_pickaxe"
-            ],
-            deflect_arrow: [
-                "item",
-                "shield"
-            ],
-            form_obsidian: [
-                "block",
-                "obsidian"
-            ],
-            mine_diamond: [
-                "item",
-                "diamond"
-            ],
-            enter_the_nether: [
-                "item",
-                "flint_and_steel"
-            ],
-            shiny_gear: [
-                "item",
-                "diamond_chesplate"
-            ],
-            enchant_item: [
-                "item",
-                "enchanted_book",
-                "enchanted"
-            ],
-            cure_zombie_villager: [
-                "item",
-                "golden_apple"
-            ],
-            follow_ender_eye: [
-                "item",
-                "eye_of_ender"
-            ],
-            enter_the_end: [
-                "block",
-                "end_stone"
-            ]
-        },
-        nether: {
-            root: [
-                "block",
-                "red_nether_bricks"
-            ],
-            return_to_sender: [
-                "item",
-                "fire_charge"
-            ],
-            find_bastion: [
-                "block",
-                "polished_blackstone_bricks"
-            ],
-            obtain_ancient_debris: [
-                "block",
-                "ancient_debris"
-            ],
-            fast_travel: [
-                "item",
-                "map"
-            ],
-            find_fortress: [
-                "block",
-                "nether_bricks"
-            ],
-            obtain_crying_obsidian: [
-                "block",
-                "crying_obsidian"
-            ],
-            distract_piglin: [
-                "item",
-                "gold_ingot"
-            ],
-            ride_strider: [
-                "item",
-                "warped_fungus_on_a_stick"
-            ],
-            uneasy_alliance: [
-                "item",
-                "ghast_tear"
-            ],
-            loot_bastion: [
-                "item",
-                "chest"
-            ],
-            use_lodestone: [
-                "block",
-                "lodestone"
-            ],
-            netherite_armor: [
-                "item",
-                "netherite_chestplate"
-            ],
-            get_wither_skull: [
-                "item",
-                "wither_skeleton_skull"
-            ],
-            obtain_blaze_rod: [
-                "item",
-                "blaze_rod"
-            ],
-            charge_respawn_anchor: [
-                "block",
-                "respawn_anchor"
-            ],
-            explore_nether: [
-                "item",
-                "netherite_boots"
-            ],
-            summon_wither: [
-                "item",
-                "nether_star",
-                "enchanted"
-            ],
-            brew_potion: [
-                "item",
-                "uncraftable_potion"
-            ],
-            create_beacon: [
-                "block",
-                "beacon"
-            ],
-            all_potions: [
-                "item",
-                "milk_bucket"
-            ],
-            create_full_beacon: [
-                "block",
-                "beacon"
-            ],
-            all_effects: [
-                "item",
-                "bucket"
-            ]
-        },
-        end: {
-            root: [
-                "block",
-                "end_stone"
-            ],
-            kill_dragon: [
-                "item",
-                "dragon_head"
-            ],
-            dragon_egg: [
-                "item",
-                "dragon_egg"
-            ],
-            enter_end_gateway: [
-                "item",
-                "ender_pearl"
-            ],
-            respawn_dragon: [
-                "item",
-                "end_crystal",
-                "enchanted"
-            ],
-            dragon_breath: [
-                "item",
-                "dragon_breath"
-            ],
-            find_end_city: [
-                "block",
-                "purpur_block"
-            ],
-            elytra: [
-                "item",
-                "elytra"
-            ],
-            levitate: [
-                "item",
-                "shulker_shell"
-            ]
-        },
-        adventure: {
-            root: [
-                "item",
-                "map"
-            ],
-            voluntary_exile: [
-                "item",
-                "ominous_banner"
-            ],
-            kill_a_mob: [
-                "item",
-                "iron_sword"
-            ],
-            trade: [
-                "item",
-                "emerald"
-            ],
-            honey_block_slide: [
-                "block",
-                "honey_block"
-            ],
-            ol_betsy: [
-                "item",
-                "crossbow"
-            ],
-            sleep_in_bed: [
-                "item",
-                "red_bed"
-            ],
-            hero_of_the_village: [
-                "item",
-                "ominous_banner"
-            ],
-            throw_trident: [
-                "item",
-                "trident"
-            ],
-            shoot_arrow: [
-                "item",
-                "bow"
-            ],
-            kill_all_mobs: [
-                "item",
-                "diamond_sword"
-            ],
-            totem_of_undying: [
-                "item",
-                "totem_of_undying"
-            ],
-            summon_iron_golem: [
-                "block",
-                "carved_pumpkin"
-            ],
-            two_birds_one_arrow: [
-                "item",
-                "crossbow"
-            ],
-            whos_the_pillager_now: [
-                "item",
-                "crossbow"
-            ],
-            arbalistic: [
-                "item",
-                "crossbow"
-            ],
-            adventuring_time: [
-                "item",
-                "diamond_boots"
-            ],
-            very_very_frightening: [
-                "item",
-                "trident"
-            ],
-            sniper_duel: [
-                "item",
-                "arrow"
-            ],
-            bullseye: [
-                "block",
-                "target"
-            ]
-        },
-        husbandry: {
-            root: [
-                "block",
-                "hay_block"
-            ],
-            safely_harvest_honey: [
-                "item",
-                "honey_bottle"
-            ],
-            breed_an_animal: [
-                "item",
-                "wheat"
-            ],
-            tame_an_animal: [
-                "item",
-                "lead"
-            ],
-            fishy_business: [
-                "item",
-                "fishing_rod"
-            ],
-            silk_touch_nest: [
-                "block",
-                "bee_nest"
-            ],
-            plant_seed: [
-                "item",
-                "wheat"
-            ],
-            bred_all_animals: [
-                "item",
-                "golden_carrot"
-            ],
-            complete_catalogue: [
-                "item",
-                "cod"
-            ],
-            tactical_fishing: [
-                "item",
-                "pufferfish_bucket"
-            ],
-            balanced_diet: [
-                "item",
-                "apple"
-            ],
-            obtain_netherite_hoe: [
-                "item",
-                "netherite_hoe"
-            ]
-        }
-    };
 }
 const advancementCategories = [
     "story",
@@ -438,7 +99,7 @@ class MCAdvancementContainer extends HTMLElement {
         containerStyle.innerHTML = this.advancementStyling;
         this.appendChild(containerStyle);
         const category = this.getAttribute("category");
-        if (advancementCategories.includes(category)) {
+        if (category in advancementCategories) {
             const advancementContainer = this.generateAdvancementDiv(category);
             this.appendChild(advancementContainer);
         }
@@ -449,7 +110,7 @@ class MCAdvancementContainer extends HTMLElement {
             const category = newValue;
             const gridDiv = this.querySelector("div");
             if (gridDiv) gridDiv.remove();
-            if (advancementCategories.includes(category)) {
+            if (category in advancementCategories) {
                 const advancementContainer = this.generateAdvancementDiv(category);
                 this.appendChild(advancementContainer);
             }
@@ -918,5 +579,118 @@ class MCAdvancementContainer extends HTMLElement {
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
     advancementStyling = `\n    mc-advancement {\n      padding: 3px;\n      display: inline-block;\n\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
 }
+const imageDir = document.currentScript.src + "/../../img/";
+const faces = {
+    top: {
+        topLeft: new UVCoord(0.5, 0),
+        bottomLeft: new UVCoord(0.05, 0.225),
+        bottomRight: new UVCoord(0.5, 0.45),
+        topRight: new UVCoord(0.95, 0.225)
+    },
+    left: {
+        topLeft: new UVCoord(0.05, 0.225),
+        bottomLeft: new UVCoord(0.05, 0.775),
+        bottomRight: new UVCoord(0.5, 1),
+        topRight: new UVCoord(0.5, 0.45)
+    },
+    right: {
+        topLeft: new UVCoord(0.5, 0.45),
+        bottomLeft: new UVCoord(0.5, 1),
+        bottomRight: new UVCoord(0.95, 0.775),
+        topRight: new UVCoord(0.95, 0.225)
+    },
+    flat: {
+        topLeft: new UVCoord(0, 0),
+        bottomLeft: new UVCoord(0, 1),
+        bottomRight: new UVCoord(1, 1),
+        topRight: new UVCoord(1, 0)
+    }
+};
+const faceTextures = {
+    cobblestone: {
+        top: `${imageDir}block/cobblestone.png`
+    }
+};
+class MCItemIcon extends HTMLElement {
+    static get observedAttributes() {
+        return [
+            "name",
+            "type",
+            "enchanted",
+            "res"
+        ];
+    }
+    renderer = null;
+    displayType = "none";
+    itemName = "";
+    enchanted = false;
+    defaultRes = 256;
+    resolution = this.defaultRes;
+    constructor(){
+        super();
+        this.shadow = this.attachShadow({
+            mode: "closed"
+        });
+        this.itemCanvas = document.createElement("canvas");
+        const style = document.createElement("style");
+        style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
+        this.shadow.append(style, this.itemCanvas);
+    }
+    async drawCanvas() {
+        if (this.displayType == "block") {
+            const [topTexture, leftTexture, rightTexture] = await Promise.all([
+                loadTexture(faceTextures[this.itemName].top),
+                faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left) : null,
+                faceTextures[this.itemName].right != undefined ? loadTexture(faceTextures[this.itemName].right) : null, 
+            ]);
+            this.renderer.renderQuad(faces.top, topTexture);
+            this.renderer.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
+                return brightness(colour, 0.8);
+            });
+            this.renderer.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
+                return brightness(colour, 0.6);
+            });
+        } else if (this.displayType == "item") {
+            const itemTexture = await loadTexture(faceTextures[this.itemName].top);
+            this.renderer.renderQuad(faces.flat, itemTexture);
+        } else {
+            const itemTexture = await loadTexture(`${imageDir}block/missing.png`);
+            this.renderer.renderQuad(faces.flat, itemTexture);
+        }
+    }
+    connectedCallback() {
+        const typeAttr = this.getAttribute("type");
+        const nameAttr = this.getAttribute("name") || "";
+        this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
+        this.enchanted = this.hasAttribute("enchanted");
+        if (typeAttr == "block" || typeAttr == "item") this.displayType = typeAttr;
+        if (nameAttr in faceTextures) this.itemName = nameAttr;
+        else this.displayType = "none";
+        this.itemCanvas.width = this.resolution;
+        this.itemCanvas.height = this.resolution;
+        this.renderer = new Renderer(this.itemCanvas);
+        this.drawCanvas();
+    }
+    attributeChangedCallback(attrName, oldVal, newVal) {
+        switch(attrName){
+            case "type":
+                if (newVal == "block" || newVal == "item") this.displayType = newVal;
+                break;
+            case "name":
+                if (newVal in Object.keys(faceTextures)) this.itemName = newVal;
+                else this.displayType = "none";
+                break;
+            case "enchanted":
+                this.enchanted = this.hasAttribute("enchanted");
+                break;
+            case "res":
+                this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
+                break;
+        }
+    }
+}
+// new MCItemIcon({ type: "block", name: "cobblestone" });
+document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-item-icon', MCItemIcon);
