@@ -162,8 +162,6 @@ class MCAdvancementContainer extends HTMLElement {
     husbandry: {rows: 13, columns: 6}
   }
 
-
-
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   advancementStyling = `
     mc-advancement {
