@@ -38,7 +38,7 @@ class MCAdvancement extends HTMLElement {
                         if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0]]) {
                             const mappedArray = this.advancementIcons[nsSplit[0]][nsSplit[1]];
                             const enchanted = mappedArray.includes("enchanted") ? " enchanted" : "";
-                            this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}" res="48"${enchanted}></mc-item-icon>`;
+                            this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}"${enchanted}></mc-item-icon>`;
                         }
                     }
                     break;
@@ -105,7 +105,7 @@ class MCAdvancement extends HTMLElement {
             ],
             shiny_gear: [
                 "item",
-                "diamond_chesplate"
+                "diamond_chestplate"
             ],
             enchant_item: [
                 "item",
@@ -118,7 +118,7 @@ class MCAdvancement extends HTMLElement {
             ],
             follow_ender_eye: [
                 "item",
-                "eye_of_ender"
+                "ender_eye"
             ],
             enter_the_end: [
                 "block",
@@ -188,7 +188,7 @@ class MCAdvancement extends HTMLElement {
             ],
             charge_respawn_anchor: [
                 "block",
-                "respawn_anchor"
+                "respawn_anchor_0"
             ],
             explore_nether: [
                 "item",
@@ -282,7 +282,7 @@ class MCAdvancement extends HTMLElement {
             ],
             ol_betsy: [
                 "item",
-                "crossbow"
+                "crossbow_standby"
             ],
             sleep_in_bed: [
                 "item",
@@ -314,15 +314,15 @@ class MCAdvancement extends HTMLElement {
             ],
             two_birds_one_arrow: [
                 "item",
-                "crossbow"
+                "crossbow_standby"
             ],
             whos_the_pillager_now: [
                 "item",
-                "crossbow"
+                "crossbow_standby"
             ],
             arbalistic: [
                 "item",
-                "crossbow"
+                "crossbow_standby"
             ],
             adventuring_time: [
                 "item",
