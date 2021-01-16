@@ -188,38 +188,26 @@ interface MCItemIconOptions {
 }
 
 const imageDir = (document.currentScript as HTMLScriptElement).src+"/../../img/";
-const faces = {
-  top: {
-    topLeft:      new UVCoord(0.50,0.000),
-    bottomLeft:   new UVCoord(0.05,0.225),
-    bottomRight:  new UVCoord(0.50,0.450),
-    topRight:     new UVCoord(0.95,0.225),
-  },
-  left: {
-    topLeft:      new UVCoord(0.05,0.225),
-    bottomLeft:   new UVCoord(0.05,0.775),
-    bottomRight:  new UVCoord(0.50,1.000),
-    topRight:     new UVCoord(0.50,0.450),
-  },
-  right: {
-    topLeft:      new UVCoord(0.50,0.450),
-    bottomLeft:   new UVCoord(0.50,1.000),
-    bottomRight:  new UVCoord(0.95,0.775),
-    topRight:     new UVCoord(0.95,0.225),
-  },
-  flat: {
-    topLeft:      new UVCoord(0.00,0.000),
-    bottomLeft:   new UVCoord(0.00,1.000),
-    bottomRight:  new UVCoord(1.00,1.000),
-    topRight:     new UVCoord(1.00,0.000),
-  },
-} as const;
 
-const faceTextures: Record<string,{top:string,left?:string,right?:string}> = {
-  cobblestone: {
-    top: `${imageDir}block/cobblestone.png`,
-  },
+interface BlocksConfig {
+  model: {
+    [quadName: string]: [
+      [number, number],
+      [number, number],
+      [number, number],
+      [number, number],
+    ];
+  };
+  block: {
+    [blockName: string]: [
+      [quadName: string, imageName: string],
+    ];
+  };
 };
+
+const blocksConfigPromise: Promise<BlocksConfig> = fetch(`${imageDir}block/blocks.json`).then(v=>v.json());
+const itemIconTypes = ["block", "item", "none"] as const;
+const itemTextureCache = new Map<string,ImageData|Promise<ImageData>>();
 
 class MCItemIcon extends HTMLElement {
 
@@ -227,20 +215,25 @@ class MCItemIcon extends HTMLElement {
     return ["name", "type", "enchanted", "res"] as const;
   }
 
-  private shadow: ShadowRoot;
-  private itemCanvas: HTMLCanvasElement;
-  private renderer: Renderer | null = null;
-  private displayType: "block" | "item" | "none" = "none";
-  private itemName: string = "";
-  private enchanted: boolean = false;
-  private defaultRes = 256;
-  private resolution: number = this.defaultRes;
+  private shadow: ShadowRoot
+    = this.attachShadow({mode: "closed"});
+  private renderer: Renderer | null
+    = null;
+  private itemCanvas: HTMLCanvasElement
+    = document.createElement("canvas");
+  private itemCanvasContext: CanvasRenderingContext2D
+    = this.itemCanvas.getContext("2d")!;
+  private itemType: typeof itemIconTypes[number]
+    = "none";
+  private itemName: string
+    = "";
+  private itemIsEnchanted: boolean
+    = false;
+  private itemRes: number
+    = 128;
 
   constructor() {
     super();
-    this.shadow = this.attachShadow({mode: "closed"});
-    this.itemCanvas = document.createElement("canvas");
-    
     const style = document.createElement("style");
     style.textContent = `
       canvas {
@@ -252,70 +245,108 @@ class MCItemIcon extends HTMLElement {
   }
 
   private async drawCanvas() {
-    if (this.displayType == "block") {
-      const [topTexture, leftTexture, rightTexture] = await Promise.all([
-        loadTexture(faceTextures[this.itemName].top),
-        faceTextures[this.itemName].left != undefined ? loadTexture(faceTextures[this.itemName].left!) : null,
-        faceTextures[this.itemName].right != undefined ? loadTexture(faceTextures[this.itemName].right!) : null,
-      ]);
-      this.renderer!.renderQuad(faces.top, topTexture);
-      this.renderer!.renderQuad(faces.left, leftTexture ?? topTexture, (colour, coord)=>{
-        return brightness(colour, 0.8);
-      });
-      this.renderer!.renderQuad(faces.right, rightTexture ?? topTexture, (colour, coord)=>{
-        return brightness(colour, 0.6);
-      });
+    const blocksConfig = await blocksConfigPromise;
+    if (this.itemType == "block") {
+      const faces = blocksConfig["block"][this.itemName];
+      const loadTexturesPromise = [];
+      // load textures
+      for (const [_, textureName] of faces) {
+        if (!itemTextureCache.has(textureName)) {
+          if (itemTextureCache.get(textureName) instanceof Promise)
+            continue;
+          const textureDataPromise = loadTexture(`block/${textureName}.png`);
+          itemTextureCache.set(textureName, textureDataPromise);
+        }
+        const texturePromise = itemTextureCache.get(textureName);
+        loadTexturesPromise.push(texturePromise);
+      }
+      await Promise.all(loadTexturesPromise);
+      // draw faces
+      for (const [modelName, textureName] of faces) {
+        // load texture from cache
+        const faceTexture = await itemTextureCache.get(textureName)!;
+        let textureFilter: RendererFilter | undefined = undefined;
+        if (modelName == "left")
+          textureFilter = { brightness: 0.8 };
+        else if (modelName == "right")
+          textureFilter = { brightness: 0.6 };
+        const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
+          topLeft: blocksConfig["model"][modelName] as any,
+          topRight: blocksConfig["model"][modelName] as any,
+          bottomLeft: blocksConfig["model"][modelName] as any,
+          bottomRight: blocksConfig["model"][modelName] as any,
+        }, faceTexture, textureFilter);
+      }
     }
-    else if (this.displayType == "item") {
-      const itemTexture = await loadTexture(faceTextures[this.itemName].top);
-      this.renderer!.renderQuad(faces.flat, itemTexture);
+    else if (this.itemType == "item") {
+      const itemTexturePath = `item/${this.itemName}.png`;
+      if (!itemTextureCache.has(itemTexturePath)) {
+        const itemTexturePromise = loadTexture(itemTexturePath);
+        itemTextureCache.set(itemTexturePath, itemTexturePromise);
+      }
+      const itemTexture = await itemTextureCache.get(itemTexturePath)!;
+      const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
+        topLeft: blocksConfig["model"]["flat"] as any,
+        topRight: blocksConfig["model"]["flat"] as any,
+        bottomLeft: blocksConfig["model"]["flat"] as any,
+        bottomRight: blocksConfig["model"]["flat"] as any,
+      }, itemTexture);
     }
     else {
-      const itemTexture = await loadTexture(`${imageDir}block/missing.png`);
-      this.renderer!.renderQuad(faces.flat, itemTexture);
+      const itemTexture = await loadTexture(`@INVALID@`);
+      const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
+        topLeft: blocksConfig["model"]["flat"] as any,
+        topRight: blocksConfig["model"]["flat"] as any,
+        bottomLeft: blocksConfig["model"]["flat"] as any,
+        bottomRight: blocksConfig["model"]["flat"] as any,
+      }, itemTexture);
+    }
+  }
+
+  private updateProperty(key: string) {
+    let value: any;
+    switch (key) {
+      case "type":
+        value = this.getAttribute("type");
+        if (itemIconTypes.includes(value))
+          this.itemType = value;
+        break;
+      case "name":
+        value = this.getAttribute("name");
+        blocksConfigPromise.then(blocksConfig=>(
+          value in blocksConfig["block"]
+            ? this.itemName = value
+            : this.itemType = "none"
+        ));
+        break;
+      case "enchanted":
+        this.itemIsEnchanted = this.hasAttribute("enchanted");
+        break;
+      case "res":
+        value = this.getAttribute("res");
+        value > 0
+          ? this.itemRes = value
+          : 0;
+        break;
     }
   }
 
   connectedCallback() {
-    const typeAttr = this.getAttribute("type");
-    const nameAttr = this.getAttribute("name") || "";
-    this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
-    this.enchanted = this.hasAttribute("enchanted");
-    if (typeAttr == "block" || typeAttr == "item")
-      this.displayType = typeAttr;
-    if (nameAttr in faceTextures)
-      this.itemName = nameAttr;
-    else
-      this.displayType = "none";
-
-    this.itemCanvas.width = this.resolution;
-    this.itemCanvas.height = this.resolution;
-    this.renderer = new Renderer(this.itemCanvas);
+    this.updateProperty("enchanted");
+    this.updateProperty("type");
+    this.updateProperty("name");
+    this.updateProperty("res");
+    this.itemCanvas.width = this.itemRes;
+    this.itemCanvas.height = this.itemRes;
+    this.renderer = new Renderer(this.itemCanvas.width, this.itemCanvas.height);
     this.drawCanvas();
   }
 
   attributeChangedCallback(attrName: typeof MCItemIcon["observedAttributes"][number], oldVal: string, newVal: string) {
-    switch (attrName) {
-      case "type":
-        if (newVal == "block" || newVal == "item")
-          this.displayType = newVal;
-        break;
-      case "name":
-        if (newVal in Object.keys(faceTextures))
-          this.itemName = newVal;
-        else
-          this.displayType = "none";
-        break;
-      case "enchanted":
-        this.enchanted = this.hasAttribute("enchanted");
-        break;
-      case "res":
-        this.resolution = Number(this.getAttribute("res")) || this.defaultRes;
-        break;
-    }
+    this.updateProperty(attrName);
   }
-
 }
+
 // new MCItemIcon({ type: "block", name: "cobblestone" });
 
 document.head.insertAdjacentHTML("afterbegin", `
