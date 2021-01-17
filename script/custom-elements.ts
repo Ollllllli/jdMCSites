@@ -165,7 +165,7 @@ class MCAdvancementContainer extends HTMLElement {
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   advancementStyling = `
     mc-advancement {
-      padding: 3px;
+      padding: 8px;
       display: inline-block;
 
       background-size: cover;
@@ -218,7 +218,7 @@ interface BlocksConfig {
   };
 };
 
-const blocksConfigPromise: Promise<BlocksConfig> = fetch(`${imageDir}block/blocks.json`).then(v=>v.json());
+const blocksConfigPromise: Promise<BlocksConfig> = fetch(`${imageDir}block/blocks.json`).then(v=>{return v.json()});
 const itemIconTypes = ["block", "item", "none"] as const;
 const itemTextureCache = new Map<string,ImageData|Promise<ImageData>>();
 
@@ -243,7 +243,7 @@ class MCItemIcon extends HTMLElement {
   private itemIsEnchanted: boolean
     = false;
   private itemRes: number
-    = 128;
+    = 48;
 
   constructor() {
     super();
@@ -257,17 +257,17 @@ class MCItemIcon extends HTMLElement {
     this.shadow.append(style, this.itemCanvas);
   }
 
-  private async drawCanvas() {
+  private async drawCanvas(itemType: string, itemName: string) {
     const blocksConfig = await blocksConfigPromise;
-    if (this.itemType == "block") {
-      const faces = blocksConfig["block"][this.itemName];
+    if (itemType == "block") {
+      const faces = blocksConfig["block"][itemName] ?? [];
       const loadTexturesPromise = [];
       // load textures
       for (const [_, textureName] of faces) {
         if (!itemTextureCache.has(textureName)) {
           if (itemTextureCache.get(textureName) instanceof Promise)
             continue;
-          const textureDataPromise = loadTexture(`block/${textureName}.png`);
+          const textureDataPromise = loadTexture(`${imageDir}block/${textureName}.png`);
           itemTextureCache.set(textureName, textureDataPromise);
         }
         const texturePromise = itemTextureCache.get(textureName);
@@ -283,35 +283,40 @@ class MCItemIcon extends HTMLElement {
           textureFilter = { brightness: 0.8 };
         else if (modelName == "right")
           textureFilter = { brightness: 0.6 };
-        const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
-          topLeft: blocksConfig["model"][modelName] as any,
-          topRight: blocksConfig["model"][modelName] as any,
-          bottomLeft: blocksConfig["model"][modelName] as any,
-          bottomRight: blocksConfig["model"][modelName] as any,
+        this.renderer!.renderQuad(this.itemCanvasContext, {
+          topLeft: blocksConfig["model"][modelName][0] as any,
+          topRight: blocksConfig["model"][modelName][3] as any,
+          bottomLeft: blocksConfig["model"][modelName][1] as any,
+          bottomRight: blocksConfig["model"][modelName][2] as any,
         }, faceTexture, textureFilter);
       }
     }
-    else if (this.itemType == "item") {
-      const itemTexturePath = `item/${this.itemName}.png`;
+    else if (itemType == "item") {
+      const itemTexturePath = `${imageDir}item/${itemName}.png`;
       if (!itemTextureCache.has(itemTexturePath)) {
         const itemTexturePromise = loadTexture(itemTexturePath);
         itemTextureCache.set(itemTexturePath, itemTexturePromise);
+        console.log(itemTexturePath, await itemTexturePromise);
       }
       const itemTexture = await itemTextureCache.get(itemTexturePath)!;
-      const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
-        topLeft: blocksConfig["model"]["flat"] as any,
-        topRight: blocksConfig["model"]["flat"] as any,
-        bottomLeft: blocksConfig["model"]["flat"] as any,
-        bottomRight: blocksConfig["model"]["flat"] as any,
+      this.renderer!.renderQuad(this.itemCanvasContext, {
+        topLeft: blocksConfig["model"]["flat"][0] as any,
+        topRight: blocksConfig["model"]["flat"][3] as any,
+        bottomLeft: blocksConfig["model"]["flat"][1] as any,
+        bottomRight: blocksConfig["model"]["flat"][2] as any,
       }, itemTexture);
     }
     else {
-      const itemTexture = await loadTexture(`@INVALID@`);
-      const renderData = this.renderer!.renderQuad(this.itemCanvasContext, {
-        topLeft: blocksConfig["model"]["flat"] as any,
-        topRight: blocksConfig["model"]["flat"] as any,
-        bottomLeft: blocksConfig["model"]["flat"] as any,
-        bottomRight: blocksConfig["model"]["flat"] as any,
+      if (!itemTextureCache.has("@MISSING@")) {
+        const itemTexturePromise = loadTexture(null);
+        itemTextureCache.set("@MISSING@", itemTexturePromise);
+      }
+      const itemTexture = await itemTextureCache.get("@MISSING@")!;
+      this.renderer!.renderQuad(this.itemCanvasContext, {
+        topLeft: blocksConfig["model"]["flat"][0] as any,
+        topRight: blocksConfig["model"]["flat"][3] as any,
+        bottomLeft: blocksConfig["model"]["flat"][1] as any,
+        bottomRight: blocksConfig["model"]["flat"][2] as any,
       }, itemTexture);
     }
   }
@@ -325,12 +330,7 @@ class MCItemIcon extends HTMLElement {
           this.itemType = value;
         break;
       case "name":
-        value = this.getAttribute("name");
-        blocksConfigPromise.then(blocksConfig=>(
-          value in blocksConfig["block"]
-            ? this.itemName = value
-            : this.itemType = "none"
-        ));
+        this.itemName = this.getAttribute("name") ?? "";
         break;
       case "enchanted":
         this.itemIsEnchanted = this.hasAttribute("enchanted");
@@ -345,19 +345,19 @@ class MCItemIcon extends HTMLElement {
   }
 
   connectedCallback() {
-    this.updateProperty("enchanted");
-    this.updateProperty("type");
     this.updateProperty("name");
+    this.updateProperty("type");
     this.updateProperty("res");
+    this.updateProperty("enchanted");
     this.itemCanvas.width = this.itemRes;
     this.itemCanvas.height = this.itemRes;
     this.renderer = new Renderer(this.itemCanvas.width, this.itemCanvas.height);
-    this.drawCanvas();
+    this.drawCanvas(this.itemType, this.itemName);
   }
 
-  attributeChangedCallback(attrName: typeof MCItemIcon["observedAttributes"][number], oldVal: string, newVal: string) {
-    this.updateProperty(attrName);
-  }
+  // attributeChangedCallback(attrName: typeof MCItemIcon["observedAttributes"][number], oldVal: string, newVal: string) {
+  //   this.updateProperty(attrName);
+  // }
 }
 
 // new MCItemIcon({ type: "block", name: "cobblestone" });

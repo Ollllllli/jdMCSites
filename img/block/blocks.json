@@ -41,6 +41,11 @@
       ["left","carved_pumpkin"],
       ["right","pumpkin_side"]
     ],
+    "cobblestone": [
+      ["top","cobblestone"],
+      ["left","cobblestone"],
+      ["right","cobblestone"]
+    ],
     "crying_obsidian": [ 
       ["top","crying_obsidian"],
       ["left","crying_obsidian"],

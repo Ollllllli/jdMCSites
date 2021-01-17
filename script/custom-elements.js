@@ -917,11 +917,12 @@ class MCAdvancementContainer extends HTMLElement {
         }
     };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      padding: 3px;\n      display: inline-block;\n\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      padding: 8px;\n      display: inline-block;\n\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
 }
 const imageDir = document.currentScript.src + "/../../img/";
-const blocksConfigPromise = fetch(`${imageDir}block/blocks.json`).then((v)=>v.json()
-);
+const blocksConfigPromise = fetch(`${imageDir}block/blocks.json`).then((v)=>{
+    return v.json();
+});
 const itemIconTypes = [
     "block",
     "item",
@@ -946,23 +947,23 @@ class MCItemIcon extends HTMLElement {
     itemType = "none";
     itemName = "";
     itemIsEnchanted = false;
-    itemRes = 128;
+    itemRes = 48;
     constructor(){
         super();
         const style = document.createElement("style");
         style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
         this.shadow.append(style, this.itemCanvas);
     }
-    async drawCanvas() {
+    async drawCanvas(itemType, itemName) {
         const blocksConfig = await blocksConfigPromise;
-        if (this.itemType == "block") {
-            const faces = blocksConfig["block"][this.itemName];
+        if (itemType == "block") {
+            const faces = blocksConfig["block"][itemName] ?? [];
             const loadTexturesPromise = [];
             // load textures
             for (const [_, textureName] of faces){
                 if (!itemTextureCache.has(textureName)) {
                     if (itemTextureCache.get(textureName) instanceof Promise) continue;
-                    const textureDataPromise = loadTexture(`block/${textureName}.png`);
+                    const textureDataPromise = loadTexture(`${imageDir}block/${textureName}.png`);
                     itemTextureCache.set(textureName, textureDataPromise);
                 }
                 const texturePromise = itemTextureCache.get(textureName);
@@ -980,33 +981,38 @@ class MCItemIcon extends HTMLElement {
                 else if (modelName == "right") textureFilter = {
                     brightness: 0.6
                 };
-                const renderData = this.renderer.renderQuad(this.itemCanvasContext, {
-                    topLeft: blocksConfig["model"][modelName],
-                    topRight: blocksConfig["model"][modelName],
-                    bottomLeft: blocksConfig["model"][modelName],
-                    bottomRight: blocksConfig["model"][modelName]
+                this.renderer.renderQuad(this.itemCanvasContext, {
+                    topLeft: blocksConfig["model"][modelName][0],
+                    topRight: blocksConfig["model"][modelName][3],
+                    bottomLeft: blocksConfig["model"][modelName][1],
+                    bottomRight: blocksConfig["model"][modelName][2]
                 }, faceTexture, textureFilter);
             }
-        } else if (this.itemType == "item") {
-            const itemTexturePath = `item/${this.itemName}.png`;
+        } else if (itemType == "item") {
+            const itemTexturePath = `${imageDir}item/${itemName}.png`;
             if (!itemTextureCache.has(itemTexturePath)) {
                 const itemTexturePromise = loadTexture(itemTexturePath);
                 itemTextureCache.set(itemTexturePath, itemTexturePromise);
+                console.log(itemTexturePath, await itemTexturePromise);
             }
             const itemTexture = await itemTextureCache.get(itemTexturePath);
-            const renderData = this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"],
-                topRight: blocksConfig["model"]["flat"],
-                bottomLeft: blocksConfig["model"]["flat"],
-                bottomRight: blocksConfig["model"]["flat"]
+            this.renderer.renderQuad(this.itemCanvasContext, {
+                topLeft: blocksConfig["model"]["flat"][0],
+                topRight: blocksConfig["model"]["flat"][3],
+                bottomLeft: blocksConfig["model"]["flat"][1],
+                bottomRight: blocksConfig["model"]["flat"][2]
             }, itemTexture);
         } else {
-            const itemTexture = await loadTexture(`@INVALID@`);
-            const renderData = this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"],
-                topRight: blocksConfig["model"]["flat"],
-                bottomLeft: blocksConfig["model"]["flat"],
-                bottomRight: blocksConfig["model"]["flat"]
+            if (!itemTextureCache.has("@MISSING@")) {
+                const itemTexturePromise = loadTexture(null);
+                itemTextureCache.set("@MISSING@", itemTexturePromise);
+            }
+            const itemTexture = await itemTextureCache.get("@MISSING@");
+            this.renderer.renderQuad(this.itemCanvasContext, {
+                topLeft: blocksConfig["model"]["flat"][0],
+                topRight: blocksConfig["model"]["flat"][3],
+                bottomLeft: blocksConfig["model"]["flat"][1],
+                bottomRight: blocksConfig["model"]["flat"][2]
             }, itemTexture);
         }
     }
@@ -1018,9 +1024,7 @@ class MCItemIcon extends HTMLElement {
                 if (itemIconTypes.includes(value)) this.itemType = value;
                 break;
             case "name":
-                value = this.getAttribute("name");
-                blocksConfigPromise.then((blocksConfig)=>value in blocksConfig["block"] ? this.itemName = value : this.itemType = "none"
-                );
+                this.itemName = this.getAttribute("name") ?? "";
                 break;
             case "enchanted":
                 this.itemIsEnchanted = this.hasAttribute("enchanted");
@@ -1032,17 +1036,14 @@ class MCItemIcon extends HTMLElement {
         }
     }
     connectedCallback() {
-        this.updateProperty("enchanted");
-        this.updateProperty("type");
         this.updateProperty("name");
+        this.updateProperty("type");
         this.updateProperty("res");
+        this.updateProperty("enchanted");
         this.itemCanvas.width = this.itemRes;
         this.itemCanvas.height = this.itemRes;
         this.renderer = new Renderer(this.itemCanvas.width, this.itemCanvas.height);
-        this.drawCanvas();
-    }
-    attributeChangedCallback(attrName, oldVal, newVal) {
-        this.updateProperty(attrName);
+        this.drawCanvas(this.itemType, this.itemName);
     }
 }
 // new MCItemIcon({ type: "block", name: "cobblestone" });
