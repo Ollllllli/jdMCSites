@@ -9,7 +9,7 @@ body {
   width: 1064px;
 }
 
-mc-advancement-container {
+mc-advancement-view {
   border-style: solid;
   border-image: url(../img/gui/inventory.png) 6.25%;
   border-width: 4px; /* 4px is worth one pixel */

@@ -107,12 +107,12 @@ type AdvancementCategory = typeof advancementCategories[number];
  *  [2]: Grid Column in the Advancement's Tab.  
  *  [3]?: Optional Type of Advancement.  
  */
-type AdvancementContainerTemplate = { [category in AdvancementCategory]: [string, number, number, string?][] }
-type AdvancementContainerTemplateSizes = { [category in AdvancementCategory]: { rows: number, columns: number } }
+type AdvancementViewTemplate = { [category in AdvancementCategory]: [string, number, number, string?][] }
+type AdvancementViewTemplateSizes = { [category in AdvancementCategory]: { rows: number, columns: number } }
 type lineCoordinates = {x1:number,y1:number,x2:number,y2:number}
 type polyCoordinates = {x1:number,y1:number,x2:number,y2:number,x3:number,y3:number,x4:number,y4:number}
 
-class MCAdvancementContainer extends HTMLElement {
+class MCAdvancementView extends HTMLElement {
   // Needed for attributeChangedCallback
   static get observedAttributes() {
     return ["category"];
@@ -131,9 +131,9 @@ class MCAdvancementContainer extends HTMLElement {
     super();
   }
 
-  private cleanOutContainer() {
-    const gridDiv = this.querySelector("mc-advancement-container>div");
-    const svgEle = this.querySelector("mc-advancement-container>svg");
+  private cleanOutView() {
+    const gridDiv = this.querySelector("mc-advancement-view>div");
+    const svgEle = this.querySelector("mc-advancement-view>svg");
     if (gridDiv != null)
       gridDiv.remove();
     if (svgEle != null)
@@ -175,8 +175,8 @@ class MCAdvancementContainer extends HTMLElement {
     svgEle.style.position = "absolute";
     svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
 
-    if (this.querySelector("mc-advancement-container>div") != null) {
-      const gridDivBounds = this.querySelector("mc-advancement-container>div")!.getBoundingClientRect();
+    if (this.querySelector("mc-advancement-view>div") != null) {
+      const gridDivBounds = this.querySelector("mc-advancement-view>div")!.getBoundingClientRect();
       svgEle.setAttribute("width",String(gridDivBounds.width));
       svgEle.setAttribute("height",String(gridDivBounds.height)); 
     }
@@ -224,22 +224,22 @@ class MCAdvancementContainer extends HTMLElement {
   }
 
   private updateElement(category: string) {
-    this.cleanOutContainer();
+    this.cleanOutView();
     if (advancementCategories.includes(category as AdvancementCategory)) {
       this.style.display = "block";
       this.style.textAlign = "center";
       this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
       this.style.backgroundSize = "64px";
       this.style.padding = "8px";
-      const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
-      this.appendChild(advancementContainer);
+      const advancementView = this.generateAdvancementDiv(category as AdvancementCategory);
+      this.appendChild(advancementView);
       const cachedSVGEle = this.cachedSVGs[category as AdvancementCategory];
       if (cachedSVGEle == null) {
         const svgEle = this.generateUnderlaySVG(category as AdvancementCategory,false);
-        this.insertBefore(svgEle,this.querySelector("mc-advancement-container>div"));
+        this.insertBefore(svgEle,this.querySelector("mc-advancement-view>div"));
         this.cachedSVGs[category as AdvancementCategory] = svgEle
       } else {
-        this.insertBefore(cachedSVGEle,this.querySelector("mc-advancement-container>div"));
+        this.insertBefore(cachedSVGEle,this.querySelector("mc-advancement-view>div"));
       }  
     }
   }
@@ -250,9 +250,9 @@ class MCAdvancementContainer extends HTMLElement {
       this.firstTime = false;
     console.log("connectedCallback");
 
-    const containerStyle = document.createElement("style");
-    containerStyle.innerHTML = this.advancementStyling;
-    this.appendChild(containerStyle);
+    const viewStyle = document.createElement("style");
+    viewStyle.innerHTML = this.advancementStyling;
+    this.appendChild(viewStyle);
     
     const category = this.getAttribute("category");
     if (category != null) {
@@ -269,7 +269,7 @@ class MCAdvancementContainer extends HTMLElement {
     }
   }
 
-  private readonly templates: AdvancementContainerTemplate = {
+  private readonly templates: AdvancementViewTemplate = {
     story: [["root",4,1],["mine_stone",4,3],["upgrade_tools",4,5],["smelt_iron",4,7],["obtain_armor",1,9],["lava_bucket",3,9],["iron_tools",6,9],["deflect_arrow",1,11],["form_obsidian",3,11],["mine_diamond",6,11],["enter_the_nether",3,13],["shiny_gear",5,13],["enchant_item",7,13],["cure_zombie_villager",2,15,"goal"],["follow_ender_eye",4,15],["enter_the_end",4,17]],
     nether: [["root",9,1],["return_to_sender",1,3],["find_bastion",3,3],["obtain_ancient_debris",6,3],["fast_travel",8,3,"challenge"],["find_fortress",10,3],["obtain_crying_obsidian",13,3],["distract_piglin",15,3],["ride_strider",17,3],["uneasy_alliance",1,5,"challenge"],["loot_bastion",3,5],["use_lodestone",5,5],["netherite_armor",7,5,"challenge"],["get_wither_skull",9,5],["obtain_blaze_rod",11,5],["charge_respawn_anchor",13,5],["explore_nether",17,5,"challenge"],["summon_wither",9,7],["brew_potion",11,7],["create_beacon",9,9],["all_potions",11,9,"challenge"],["create_full_beacon",9,11,"goal"],["all_effects",11,11,"challenge"]],
     end: [["root",4,1],["kill_dragon",4,3],["dragon_egg",1,5,"goal"],["enter_end_gateway",3,5],["respawn_dragon",5,5,"goal"],["dragon_breath",7,5,"goal"],["find_end_city",3,7],["elytra",2,9],["levitate",4,9,"challenge"]],
@@ -277,7 +277,7 @@ class MCAdvancementContainer extends HTMLElement {
     husbandry: [["root",6,1],["safely_harvest_honey",1,3],["breed_an_animal",3,3],["tame_an_animal",5,3],["fishy_business",7,3],["silk_touch_nest",9,3],["plant_seed",11,3],["bred_all_animals",3,5,"challenge"],["complete_catalogue",5,5,"challenge"],["tactical_fishing",7,5],["balanced_diet",10,5,"challenge"],["obtain_netherite_hoe",12,5,"challenge"]],
   };
 
-  private readonly templateSizes: AdvancementContainerTemplateSizes = {
+  private readonly templateSizes: AdvancementViewTemplateSizes = {
     story: {rows: 8, columns: 18},
     nether: {rows: 18, columns: 12},
     end: {rows: 8, columns: 10},
@@ -522,5 +522,5 @@ document.head.insertAdjacentHTML("afterbegin", `
 `);
 
 customElements.define('mc-advancement', MCAdvancement);
-customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);

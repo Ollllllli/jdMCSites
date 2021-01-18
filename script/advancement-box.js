@@ -3,7 +3,7 @@ class MCAdvancementMain {
     constructor(advInstance, playerInstance, advMainTag){
         this.advInstance = advInstance;
         this.playerInstance = playerInstance;
-        this.advContainer = document.querySelector("mc-advancement-container");
+        this.advView = document.querySelector("mc-advancement-view");
         if (advMainTag) {
             this.advMainRoot = document.querySelector(advMainTag);
         }
@@ -54,13 +54,13 @@ class MCAdvancementMain {
         }
     }
     updateAdvancementsStatus(uuid, category) {
-        if (this.advContainer != null) {
-            for (const child of this.advContainer.querySelectorAll("[done='true']")){
+        if (this.advView != null) {
+            for (const child of this.advView.querySelectorAll("[done='true']")){
                 child.removeAttribute("done");
             }
             for (const adv of this.advInstance.getAllCompleted(uuid)){
                 if (adv.includes(category)) {
-                    const advEle = document.querySelector(`mc-advancement-container mc-advancement[ns="${adv}"]`);
+                    const advEle = document.querySelector(`mc-advancement-view mc-advancement[ns="${adv}"]`);
                     if (advEle != null) {
                         advEle.setAttribute("done", "true");
                     }
@@ -69,8 +69,8 @@ class MCAdvancementMain {
         }
     }
     changeAdvancementCategory(category) {
-        if (this.advContainer != null) {
-            this.advContainer.setAttribute("category", category);
+        if (this.advView != null) {
+            this.advView.setAttribute("category", category);
         }
     }
 }

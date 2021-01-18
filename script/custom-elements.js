@@ -445,7 +445,7 @@ const advancementCategories = [
     "adventure",
     "husbandry"
 ];
-class MCAdvancementContainer extends HTMLElement {
+class MCAdvancementView extends HTMLElement {
     // Needed for attributeChangedCallback
     static get observedAttributes() {
         return [
@@ -463,9 +463,9 @@ class MCAdvancementContainer extends HTMLElement {
     constructor(){
         super();
     }
-    cleanOutContainer() {
-        const gridDiv = this.querySelector("mc-advancement-container>div");
-        const svgEle = this.querySelector("mc-advancement-container>svg");
+    cleanOutView() {
+        const gridDiv = this.querySelector("mc-advancement-view>div");
+        const svgEle = this.querySelector("mc-advancement-view>svg");
         if (gridDiv != null) gridDiv.remove();
         if (svgEle != null) svgEle.remove();
         this.removeAttribute("style");
@@ -499,8 +499,8 @@ class MCAdvancementContainer extends HTMLElement {
         const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgEle.style.position = "absolute";
         svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
-        if (this.querySelector("mc-advancement-container>div") != null) {
-            const gridDivBounds = this.querySelector("mc-advancement-container>div").getBoundingClientRect();
+        if (this.querySelector("mc-advancement-view>div") != null) {
+            const gridDivBounds = this.querySelector("mc-advancement-view>div").getBoundingClientRect();
             svgEle.setAttribute("width", String(gridDivBounds.width));
             svgEle.setAttribute("height", String(gridDivBounds.height));
         }
@@ -568,22 +568,22 @@ class MCAdvancementContainer extends HTMLElement {
         }
     }
     updateElement(category) {
-        this.cleanOutContainer();
+        this.cleanOutView();
         if (advancementCategories.includes(category)) {
             this.style.display = "block";
             this.style.textAlign = "center";
             this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
             this.style.backgroundSize = "64px";
             this.style.padding = "8px";
-            const advancementContainer = this.generateAdvancementDiv(category);
-            this.appendChild(advancementContainer);
+            const advancementView = this.generateAdvancementDiv(category);
+            this.appendChild(advancementView);
             const cachedSVGEle = this.cachedSVGs[category];
             if (cachedSVGEle == null) {
                 const svgEle = this.generateUnderlaySVG(category, false);
-                this.insertBefore(svgEle, this.querySelector("mc-advancement-container>div"));
+                this.insertBefore(svgEle, this.querySelector("mc-advancement-view>div"));
                 this.cachedSVGs[category] = svgEle;
             } else {
-                this.insertBefore(cachedSVGEle, this.querySelector("mc-advancement-container>div"));
+                this.insertBefore(cachedSVGEle, this.querySelector("mc-advancement-view>div"));
             }
         }
     }
@@ -591,9 +591,9 @@ class MCAdvancementContainer extends HTMLElement {
     connectedCallback() {
         if (this.firstTime) this.firstTime = false;
         console.log("connectedCallback");
-        const containerStyle = document.createElement("style");
-        containerStyle.innerHTML = this.advancementStyling;
-        this.appendChild(containerStyle);
+        const viewStyle = document.createElement("style");
+        viewStyle.innerHTML = this.advancementStyling;
+        this.appendChild(viewStyle);
         const category = this.getAttribute("category");
         if (category != null) {
             this.updateElement(category);
@@ -1492,5 +1492,5 @@ class MCItemIcon extends HTMLElement {
 // new MCItemIcon({ type: "block", name: "cobblestone" });
 document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
-customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);
