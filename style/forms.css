@@ -1,7 +1,13 @@
 .select-wrapper {
   position: relative;
   overflow: visible;
-  width: 15rem;
+  width: 16rem;
+  z-index: 10;
+}
+.content-wrapper {
+  border-image: url(../img/gui/advancement-normal.png) 20% fill;
+  border-width: 16px;
+  border-style: solid;
 }
 select {
   position: absolute;

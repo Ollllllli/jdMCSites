@@ -275,7 +275,7 @@ class MCAdvancement extends HTMLElement {
                 "dragon_head"
             ],
             dragon_egg: [
-                "item",
+                "block",
                 "dragon_egg"
             ],
             enter_end_gateway: [
@@ -288,7 +288,7 @@ class MCAdvancement extends HTMLElement {
                 "enchanted"
             ],
             dragon_breath: [
-                "block",
+                "item",
                 "dragon_breath"
             ],
             find_end_city: [
@@ -453,6 +453,13 @@ class MCAdvancementContainer extends HTMLElement {
         ];
     }
     firstTime = true;
+    cachedSVGs = {
+        story: null,
+        nether: null,
+        end: null,
+        adventure: null,
+        husbandry: null
+    };
     constructor(){
         super();
     }
@@ -461,10 +468,9 @@ class MCAdvancementContainer extends HTMLElement {
         const svgEle = this.querySelector("mc-advancement-container>svg");
         if (gridDiv != null) gridDiv.remove();
         if (svgEle != null) svgEle.remove();
+        this.removeAttribute("style");
     }
     generateAdvancementDiv(category) {
-        this.style.display = "block";
-        this.style.textAlign = "center";
         const mainGrid = document.createElement("div");
         //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
         //x=4 for width=1000px
@@ -489,38 +495,35 @@ class MCAdvancementContainer extends HTMLElement {
     //Optimize:false is to render coords list every time
     //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
     //clean this up
-    generateUnderlaySVG(category, optimize) {
+    generateUnderlaySVG(category, optimise) {
         const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgEle.style.position = "absolute";
-        svgEle.style.zIndex = "-1";
         svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
         if (this.querySelector("mc-advancement-container>div") != null) {
             const gridDivBounds = this.querySelector("mc-advancement-container>div").getBoundingClientRect();
             svgEle.setAttribute("width", String(gridDivBounds.width));
             svgEle.setAttribute("height", String(gridDivBounds.height));
         }
-        if (category != null && advancementCategories.includes(category)) {
-            let coordinatesSet = new Set();
-            for (const advancementGroup of this.templateLineMap[category]){
-                for (const endAdv of advancementGroup[1]){
-                    const linkingCoords = this.getLinkingCoords(category + "/" + advancementGroup[0], category + "/" + endAdv);
-                    if (linkingCoords != null) {
-                        coordinatesSet.add(linkingCoords);
-                    }
+        let coordinatesSet = new Set();
+        for (const advancementGroup of this.templateLineMap[category]){
+            for (const endAdv of advancementGroup[1]){
+                const linkingCoords = this.getLinkingCoords(category + "/" + advancementGroup[0], category + "/" + endAdv);
+                if (linkingCoords != null) {
+                    coordinatesSet.add(linkingCoords);
                 }
             }
-            for (const color of [
-                "black",
-                "white"
-            ]){
-                for (const cGroup of coordinatesSet.values()){
-                    if (cGroup.type == "line") {
-                        const coords = cGroup.coords;
-                        svgEle.innerHTML += `<line id="${color}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}"></line>`;
-                    } else if (cGroup.type == "polyline") {
-                        const coords = cGroup.coords;
-                        svgEle.innerHTML += `<polyline id="${color}" points="${coords.x1},${coords.y1} ${coords.x2},${coords.y2} ${coords.x3},${coords.y3} ${coords.x4},${coords.y4}"></polyline>`;
-                    }
+        }
+        for (const color of [
+            "black",
+            "white"
+        ]){
+            for (const cGroup of coordinatesSet.values()){
+                if (cGroup.type == "line") {
+                    const coords = cGroup.coords;
+                    svgEle.innerHTML += `<line id="${color}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}"></line>`;
+                } else if (cGroup.type == "polyline") {
+                    const coords = cGroup.coords;
+                    svgEle.innerHTML += `<polyline id="${color}" points="${coords.x1},${coords.y1} ${coords.x2},${coords.y2} ${coords.x3},${coords.y3} ${coords.x4},${coords.y4}"></polyline>`;
                 }
             }
         }
@@ -564,32 +567,44 @@ class MCAdvancementContainer extends HTMLElement {
             return null;
         }
     }
+    updateElement(category) {
+        this.cleanOutContainer();
+        if (advancementCategories.includes(category)) {
+            this.style.display = "block";
+            this.style.textAlign = "center";
+            this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
+            this.style.backgroundSize = "64px";
+            this.style.padding = "8px";
+            const advancementContainer = this.generateAdvancementDiv(category);
+            this.appendChild(advancementContainer);
+            const cachedSVGEle = this.cachedSVGs[category];
+            if (cachedSVGEle == null) {
+                const svgEle = this.generateUnderlaySVG(category, false);
+                this.insertBefore(svgEle, this.querySelector("mc-advancement-container>div"));
+                this.cachedSVGs[category] = svgEle;
+            } else {
+                this.insertBefore(cachedSVGEle, this.querySelector("mc-advancement-container>div"));
+            }
+        }
+    }
     //When element is added to DOM
     connectedCallback() {
         if (this.firstTime) this.firstTime = false;
         console.log("connectedCallback");
-        this.cleanOutContainer();
         const containerStyle = document.createElement("style");
         containerStyle.innerHTML = this.advancementStyling;
         this.appendChild(containerStyle);
         const category = this.getAttribute("category");
-        if (advancementCategories.includes(category)) {
-            const advancementContainer = this.generateAdvancementDiv(category);
-            this.appendChild(advancementContainer);
-            this.insertBefore(this.generateUnderlaySVG(category, false), this.querySelector("mc-advancement-container>div"));
+        if (category != null) {
+            this.updateElement(category);
         }
     }
     //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
     attributeChangedCallback(name, _, newValue) {
         console.log("attributeChangedCallback");
         if (name == "category" && !this.firstTime) {
-            this.cleanOutContainer();
             const category = newValue;
-            if (advancementCategories.includes(category)) {
-                const advancementContainer = this.generateAdvancementDiv(category);
-                this.appendChild(advancementContainer);
-                this.insertBefore(this.generateUnderlaySVG(category, false), this.querySelector("mc-advancement-container>div"));
-            }
+            this.updateElement(category);
         }
     }
     templates = {
@@ -1344,7 +1359,7 @@ class MCAdvancementContainer extends HTMLElement {
         ]
     };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
     svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
 }
 const imageDir = document.currentScript.src + "/../../img/";

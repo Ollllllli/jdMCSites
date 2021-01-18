@@ -94,7 +94,7 @@ class MCAdvancement extends HTMLElement {
   private advancementIcons: AdvancementIconMap = {
     story: {root: ["block","grass_block"], mine_stone: ["item","wooden_pickaxe"], upgrade_tools: ["item","stone_pickaxe"], smelt_iron: ["item","iron_ingot"], obtain_armor: ["item","iron_chestplate"], lava_bucket: ["item","lava_bucket"], iron_tools: ["item","iron_pickaxe"], deflect_arrow: ["block","shield"], form_obsidian: ["block","obsidian"], mine_diamond: ["item","diamond"], enter_the_nether: ["item","flint_and_steel"], shiny_gear: ["item","diamond_chestplate"], enchant_item: ["item","enchanted_book","enchanted"], cure_zombie_villager: ["item","golden_apple"], follow_ender_eye: ["item","ender_eye"], enter_the_end: ["block","end_stone"]},
     nether: {root: ["block","red_nether_bricks"], return_to_sender: ["item","fire_charge"], find_bastion: ["block","polished_blackstone_bricks"], obtain_ancient_debris: ["block","ancient_debris"], fast_travel: ["item", "map"], find_fortress: ["block", "nether_bricks"], obtain_crying_obsidian: ["block","crying_obsidian"], distract_piglin: ["item","gold_ingot"], ride_strider: ["item","warped_fungus_on_a_stick"], uneasy_alliance: ["item","ghast_tear"], loot_bastion: ["block","chest"], use_lodestone: ["block","lodestone"], netherite_armor: ["item","netherite_chestplate"], get_wither_skull: ["block","wither_skeleton_skull"], obtain_blaze_rod: ["item","blaze_rod"], charge_respawn_anchor: ["block","respawn_anchor_0"], explore_nether: ["item","netherite_boots"], summon_wither: ["item","nether_star","enchanted"], brew_potion: ["item","uncraftable_potion"], create_beacon: ["block","beacon"], all_potions: ["item","milk_bucket"], create_full_beacon: ["block","beacon"], all_effects: ["item","bucket"]},
-    end: {root: ["block","end_stone"], kill_dragon: ["block","dragon_head"], dragon_egg: ["item","dragon_egg"], enter_end_gateway: ["item","ender_pearl"], respawn_dragon: ["item","end_crystal","enchanted"], dragon_breath: ["block","dragon_breath"], find_end_city: ["block","purpur_block"], elytra: ["item","elytra"], levitate: ["item","shulker_shell"]},
+    end: {root: ["block","end_stone"], kill_dragon: ["block","dragon_head"], dragon_egg: ["block","dragon_egg"], enter_end_gateway: ["item","ender_pearl"], respawn_dragon: ["item","end_crystal","enchanted"], dragon_breath: ["item","dragon_breath"], find_end_city: ["block","purpur_block"], elytra: ["item","elytra"], levitate: ["item","shulker_shell"]},
     adventure: {root: ["item","map"], voluntary_exile: ["block","ominous_banner"], kill_a_mob: ["item","iron_sword"], trade: ["item","emerald"], honey_block_slide: ["block","honey_block"], ol_betsy: ["item","crossbow_standby"], sleep_in_bed: ["block","red_bed"], hero_of_the_village: ["block","ominous_banner"], throw_trident: ["item","trident"], shoot_arrow: ["item", "bow"], kill_all_mobs: ["item","diamond_sword"], totem_of_undying: ["item","totem_of_undying"], summon_iron_golem: ["block","carved_pumpkin"], two_birds_one_arrow: ["item","crossbow_standby"], whos_the_pillager_now: ["item","crossbow_standby"], arbalistic: ["item","crossbow_standby"], adventuring_time: ["item","diamond_boots"], very_very_frightening: ["item","trident"], sniper_duel: ["item","arrow"], bullseye: ["block","target"]},
     husbandry: {root: ["block","hay_block"], safely_harvest_honey: ["item","honey_bottle"], breed_an_animal: ["item","wheat"], tame_an_animal: ["item","lead"], fishy_business: ["item","fishing_rod"], silk_touch_nest: ["block","bee_nest"], plant_seed: ["item","wheat"], bred_all_animals: ["item","golden_carrot"], complete_catalogue: ["item","cod"], tactical_fishing: ["item","pufferfish_bucket"], balanced_diet: ["item","apple"], obtain_netherite_hoe: ["item","netherite_hoe"]},
   }
@@ -119,6 +119,13 @@ class MCAdvancementContainer extends HTMLElement {
   }
 
   firstTime = true;
+  cachedSVGs: Record<AdvancementCategory,SVGSVGElement|null> = {
+    story: null,
+    nether: null,
+    end: null,
+    adventure: null,
+    husbandry: null
+  }
 
   constructor() {
     super();
@@ -131,11 +138,10 @@ class MCAdvancementContainer extends HTMLElement {
       gridDiv.remove();
     if (svgEle != null)
       svgEle.remove();
+    this.removeAttribute("style");
   }
 
   private generateAdvancementDiv(category: AdvancementCategory) {
-    this.style.display = "block"
-    this.style.textAlign = "center"
     const mainGrid = document.createElement("div");
     //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
     //x=4 for width=1000px
@@ -164,10 +170,9 @@ class MCAdvancementContainer extends HTMLElement {
   //Optimize:false is to render coords list every time
   //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
   //clean this up
-  private generateUnderlaySVG(category: AdvancementCategory|null, optimize: false|true) {
+  private generateUnderlaySVG(category: AdvancementCategory, optimise: boolean) {
     const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgEle.style.position = "absolute";
-    svgEle.style.zIndex = "-1";
     svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
 
     if (this.querySelector("mc-advancement-container>div") != null) {
@@ -176,30 +181,26 @@ class MCAdvancementContainer extends HTMLElement {
       svgEle.setAttribute("height",String(gridDivBounds.height)); 
     }
 
-    if (category != null && advancementCategories.includes(category)) {
-      let coordinatesSet: Set<{type:"polyline",coords:polyCoordinates}|{type:"line",coords:lineCoordinates}> = new Set(); 
-      for (const advancementGroup of this.templateLineMap[category]) {
-        for (const endAdv of advancementGroup[1]) {
-          const linkingCoords = this.getLinkingCoords(category+"/"+advancementGroup[0],category+"/"+endAdv)
-          if (linkingCoords != null) {
-            coordinatesSet.add(linkingCoords);
-          }
-        } 
-      }
-
-      for (const color of ["black","white"]) {
-        for (const cGroup of coordinatesSet.values()) {
-          if (cGroup.type == "line") {
-            const coords = cGroup.coords;
-            svgEle.innerHTML += `<line id="${color}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}"></line>`;
-          } else if (cGroup.type == "polyline") {
-            const coords = cGroup.coords;
-            svgEle.innerHTML += `<polyline id="${color}" points="${coords.x1},${coords.y1} ${coords.x2},${coords.y2} ${coords.x3},${coords.y3} ${coords.x4},${coords.y4}"></polyline>`;
-          }
+    let coordinatesSet: Set<{type:"polyline",coords:polyCoordinates}|{type:"line",coords:lineCoordinates}> = new Set(); 
+    for (const advancementGroup of this.templateLineMap[category]) {
+      for (const endAdv of advancementGroup[1]) {
+        const linkingCoords = this.getLinkingCoords(category+"/"+advancementGroup[0],category+"/"+endAdv)
+        if (linkingCoords != null) {
+          coordinatesSet.add(linkingCoords);
+        }
+      } 
+    }
+    for (const color of ["black","white"]) {
+      for (const cGroup of coordinatesSet.values()) {
+        if (cGroup.type == "line") {
+          const coords = cGroup.coords;
+          svgEle.innerHTML += `<line id="${color}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}"></line>`;
+        } else if (cGroup.type == "polyline") {
+          const coords = cGroup.coords;
+          svgEle.innerHTML += `<polyline id="${color}" points="${coords.x1},${coords.y1} ${coords.x2},${coords.y2} ${coords.x3},${coords.y3} ${coords.x4},${coords.y4}"></polyline>`;
         }
       }
     }
-
     return svgEle
   }
 
@@ -222,37 +223,49 @@ class MCAdvancementContainer extends HTMLElement {
     }
   }
 
+  private updateElement(category: string) {
+    this.cleanOutContainer();
+    if (advancementCategories.includes(category as AdvancementCategory)) {
+      this.style.display = "block";
+      this.style.textAlign = "center";
+      this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
+      this.style.backgroundSize = "64px";
+      this.style.padding = "8px";
+      const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
+      this.appendChild(advancementContainer);
+      const cachedSVGEle = this.cachedSVGs[category as AdvancementCategory];
+      if (cachedSVGEle == null) {
+        const svgEle = this.generateUnderlaySVG(category as AdvancementCategory,false);
+        this.insertBefore(svgEle,this.querySelector("mc-advancement-container>div"));
+        this.cachedSVGs[category as AdvancementCategory] = svgEle
+      } else {
+        this.insertBefore(cachedSVGEle,this.querySelector("mc-advancement-container>div"));
+      }  
+    }
+  }
+
   //When element is added to DOM
   connectedCallback() {
     if (this.firstTime)
       this.firstTime = false;
-    console.log("connectedCallback")
-    this.cleanOutContainer()
+    console.log("connectedCallback");
 
     const containerStyle = document.createElement("style");
     containerStyle.innerHTML = this.advancementStyling;
     this.appendChild(containerStyle);
     
     const category = this.getAttribute("category");
-    if (advancementCategories.includes(category as AdvancementCategory)) {
-      const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
-      this.appendChild(advancementContainer);
-      this.insertBefore(this.generateUnderlaySVG(category as AdvancementCategory,false),this.querySelector("mc-advancement-container>div"));
+    if (category != null) {
+      this.updateElement(category);
     }
   }
 
   //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
   attributeChangedCallback(name: string, _: never, newValue: string) {
-    console.log("attributeChangedCallback")
+    console.log("attributeChangedCallback");
     if (name == "category" && !this.firstTime) {
-      this.cleanOutContainer()
-
       const category = newValue;
-      if (advancementCategories.includes(category as AdvancementCategory)) {
-        const advancementContainer = this.generateAdvancementDiv(category as AdvancementCategory);
-        this.appendChild(advancementContainer);
-        this.insertBefore(this.generateUnderlaySVG(category as AdvancementCategory,false),this.querySelector("mc-advancement-container>div"));
-      }
+      this.updateElement(category);
     }
   }
 
@@ -287,6 +300,7 @@ class MCAdvancementContainer extends HTMLElement {
       padding: 20px;
       background-size: cover;
       background-image: url(./img/gui/advancement-normal.png);
+      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
     }
 
     mc-advancement[type="challenge"] {
