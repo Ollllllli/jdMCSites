@@ -23,6 +23,24 @@
       [0.00, 1.000],
       [1.00, 1.000],
       [1.00, 0.000]
+    ],
+    "top_inside": [
+      [0.50, 0.065],
+      [0.11, 0.260],
+      [0.50, 0.455],
+      [0.89, 0.260]
+    ],
+    "left_inside": [
+      [0.11, 0.260],
+      [0.11, 0.740],
+      [0.50, 0.940],
+      [0.50, 0.455]
+    ],
+    "right_inside": [
+      [0.50, 0.455],
+      [0.50, 0.940],
+      [0.89, 0.740],
+      [0.89, 0.260]
     ]
   },
   "block": {
@@ -67,9 +85,12 @@
       ["right","hay_block_side"]
     ],
     "honey_block": [ 
-      ["top","honey_block_top"],
-      ["left","honey_block_side"],
-      ["right","honey_block_side"]
+      ["top","honey_block_outside"],
+      ["left","honey_block_outside"],
+      ["right","honey_block_outside"],
+      ["top_inside","honey_block_top"],
+      ["left_inside","honey_block_side"],
+      ["right_inside","honey_block_side"]
     ],
     "lodestone": [ 
       ["top","lodestone_top"],
@@ -112,28 +133,28 @@
       ["right","target_side"]
     ],
     "beacon": [
-      ["face","beacon"]
+      ["flat","beacon"]
     ],
     "chest": [
-      ["face","chest"]
+      ["flat","chest"]
     ],
     "dragon_egg": [
-      ["face","dragon_egg"]
+      ["flat","dragon_egg"]
     ],
     "dragon_head": [
-      ["face","dragon_head"]
+      ["flat","dragon_head"]
     ],
     "ominous_banner": [
-      ["face","ominous_banner"]
+      ["flat","ominous_banner"]
     ],
     "red_bed": [
-      ["face","red_bed"]
+      ["flat","red_bed"]
     ],
     "shield": [
-      ["face","shield"]
+      ["flat","shield"]
     ],
     "wither_skeleton_skull": [
-      ["face","wither_skeleton_skull"]
+      ["flat","wither_skeleton_skull"]
     ]
   }
 }
