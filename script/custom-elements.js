@@ -1,3 +1,27 @@
+function generateSelect(keyValue) {
+    const selectWrapper = document.createElement("div");
+    selectWrapper.classList.add("select-wrapper");
+    const selectElement = document.createElement("select");
+    selectElement.onfocus = ()=>{
+        selectElement.size = selectElement.children.length;
+    };
+    selectElement.onblur = ()=>{
+        selectElement.size = 0;
+    };
+    selectElement.onchange = ()=>{
+        selectElement.size = 1;
+        selectElement.blur();
+    };
+    for (const [optionValue, optionLabel] of keyValue){
+        const optionElement = new Option(optionLabel, optionValue);
+        selectElement.append(optionElement);
+    }
+    selectWrapper.append(selectElement);
+    return {
+        root: selectWrapper,
+        select: selectElement
+    };
+}
 class MCAdvancement extends HTMLElement {
     static advancementAttributes = [
         'col',
@@ -38,6 +62,7 @@ class MCAdvancement extends HTMLElement {
                         if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0]]) {
                             const mappedArray = this.advancementIcons[nsSplit[0]][nsSplit[1]];
                             const enchanted = mappedArray.includes("enchanted") ? " enchanted" : "";
+                            this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}"${enchanted}></mc-item-icon>`;
                         }
                     }
                     break;
@@ -108,7 +133,7 @@ class MCAdvancement extends HTMLElement {
                 "iron_pickaxe"
             ],
             deflect_arrow: [
-                "item",
+                "block",
                 "shield"
             ],
             form_obsidian: [
@@ -187,7 +212,7 @@ class MCAdvancement extends HTMLElement {
                 "ghast_tear"
             ],
             loot_bastion: [
-                "item",
+                "block",
                 "chest"
             ],
             use_lodestone: [
@@ -199,7 +224,7 @@ class MCAdvancement extends HTMLElement {
                 "netherite_chestplate"
             ],
             get_wither_skull: [
-                "item",
+                "block",
                 "wither_skeleton_skull"
             ],
             obtain_blaze_rod: [
@@ -246,7 +271,7 @@ class MCAdvancement extends HTMLElement {
                 "end_stone"
             ],
             kill_dragon: [
-                "item",
+                "block",
                 "dragon_head"
             ],
             dragon_egg: [
@@ -263,7 +288,7 @@ class MCAdvancement extends HTMLElement {
                 "enchanted"
             ],
             dragon_breath: [
-                "item",
+                "block",
                 "dragon_breath"
             ],
             find_end_city: [
@@ -285,7 +310,7 @@ class MCAdvancement extends HTMLElement {
                 "map"
             ],
             voluntary_exile: [
-                "item",
+                "block",
                 "ominous_banner"
             ],
             kill_a_mob: [
@@ -305,11 +330,11 @@ class MCAdvancement extends HTMLElement {
                 "crossbow_standby"
             ],
             sleep_in_bed: [
-                "item",
+                "block",
                 "red_bed"
             ],
             hero_of_the_village: [
-                "item",
+                "block",
                 "ominous_banner"
             ],
             throw_trident: [
@@ -1319,7 +1344,7 @@ class MCAdvancementContainer extends HTMLElement {
         ]
     };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
     svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
 }
 const imageDir = document.currentScript.src + "/../../img/";

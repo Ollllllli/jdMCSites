@@ -1,7 +1,7 @@
 .select-wrapper {
   position: relative;
   overflow: visible;
-  width: 5rem;
+  width: 15rem;
 }
 select {
   position: absolute;
@@ -43,4 +43,11 @@ select > option:checked {
 }
 select > option:checked:hover {
   background: url("../img/small-checked-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
+}
+
+mc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3rem;
 }

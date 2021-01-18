@@ -141,7 +141,7 @@ class StatsAPI extends CacheManager {
 }
 
 class PlayerAPI extends CacheManager {
-  players: Map<string, Player> = new Map();
+  players: Map<UUID, Player> = new Map();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {

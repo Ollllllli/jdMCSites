@@ -1,7 +1,24 @@
 class MCAdvancementMain {
   advContainer: MCAdvancementContainer | null;
-  constructor(private advInstance: AdvancementsAPI, private playerInstance: PlayerAPI) {
+  advMainRoot: Element | null = null;
+  constructor(private advInstance: AdvancementsAPI, private playerInstance: PlayerAPI, advMainTag?: string) {
     this.advContainer = document.querySelector("mc-advancement-container");
+    if (advMainTag) {
+      this.advMainRoot = document.querySelector(advMainTag);
+    }
+    if (this.advMainRoot != null) {
+      let uuidNameList: [UUID,string][] = [];
+      for (const [uuid,player] of playerInstance.players) {
+        uuidNameList.push([uuid,player.username]);
+      }
+      uuidNameList.sort((a,b)=>Number(a[1].localeCompare(b[1])));
+      const {root: uuidPickerRoot, select: uuidPickerSelect} = generateSelect(uuidNameList);
+      const {root: categoryPickerRoot, select: categoryPickerSelect} = generateSelect([["story","Story"],["nether","Nether"],["end","End"],["adventure","Adventure"],["husbandry","Husbandry"]]);
+      const mcHeaderEle = document.createElement("mc-header");
+      mcHeaderEle.append(uuidPickerRoot,categoryPickerRoot);
+
+      this.advMainRoot.insertAdjacentElement('afterbegin',mcHeaderEle);
+    }
   }
 
   updateAdvancementsStatus(uuid: UUID, category: AdvancementCategory) {
@@ -23,10 +40,10 @@ class MCAdvancementMain {
 
 }
 
-let advMain: MCAdvancementMain;
+let advMainGlob: MCAdvancementMain;
 window.onload = async()=>{
   const advancements = new AdvancementsAPI();  
   const player = new PlayerAPI();
   await Promise.all([advancements.init(), player.init()]);
-  advMain = new MCAdvancementMain(advancements, player);
+  advMainGlob = new MCAdvancementMain(advancements, player, "mc-advancement-main");
 };
