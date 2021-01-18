@@ -16,14 +16,22 @@ class MCAdvancementMain {
       const {root: categoryPickerRoot, select: categoryPickerSelect} = generateSelect([["story","Story"],["nether","Nether"],["end","End"],["adventure","Adventure"],["husbandry","Husbandry"]]);
       const mcHeaderEle = document.createElement("mc-header");
       mcHeaderEle.append(uuidPickerRoot,categoryPickerRoot);
-
+      
+      categoryPickerSelect.addEventListener("change",()=>{
+        this.changeAdvancementCategory(categoryPickerSelect.value);
+        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
+      });
+      uuidPickerSelect.addEventListener("change",()=>{
+        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
+      });
       this.advMainRoot.insertAdjacentElement('afterbegin',mcHeaderEle);
+      this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
     }
   }
 
-  updateAdvancementsStatus(uuid: UUID, category: AdvancementCategory) {
+  updateAdvancementsStatus(uuid: UUID, category: string) {
     if (this.advContainer != null) {
-      for (const child of this.advContainer.children) {
+      for (const child of this.advContainer.querySelectorAll("[done='true']")) {
         child.removeAttribute("done");
       }
 
@@ -35,6 +43,12 @@ class MCAdvancementMain {
           }
         }
       }
+    }
+  }
+
+  changeAdvancementCategory(category: string) {
+    if (this.advContainer != null) {
+      this.advContainer.setAttribute("category",category);
     }
   }
 

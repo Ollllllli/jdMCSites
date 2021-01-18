@@ -42,12 +42,20 @@ class MCAdvancementMain {
             ]);
             const mcHeaderEle = document.createElement("mc-header");
             mcHeaderEle.append(uuidPickerRoot, categoryPickerRoot);
+            categoryPickerSelect.addEventListener("change", ()=>{
+                this.changeAdvancementCategory(categoryPickerSelect.value);
+                this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
+            });
+            uuidPickerSelect.addEventListener("change", ()=>{
+                this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
+            });
             this.advMainRoot.insertAdjacentElement('afterbegin', mcHeaderEle);
+            this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
         }
     }
     updateAdvancementsStatus(uuid, category) {
         if (this.advContainer != null) {
-            for (const child of this.advContainer.children){
+            for (const child of this.advContainer.querySelectorAll("[done='true']")){
                 child.removeAttribute("done");
             }
             for (const adv of this.advInstance.getAllCompleted(uuid)){
@@ -58,6 +66,11 @@ class MCAdvancementMain {
                     }
                 }
             }
+        }
+    }
+    changeAdvancementCategory(category) {
+        if (this.advContainer != null) {
+            this.advContainer.setAttribute("category", category);
         }
     }
 }
