@@ -151,11 +151,13 @@ class MCAdvancementContainer extends HTMLElement {
     svgEle.style.position = "absolute";
     svgEle.style.zIndex = "-1";
     svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
+
     if (this.querySelector("mc-advancement-container>div") != null) {
       const gridDivBounds = this.querySelector("mc-advancement-container>div")!.getBoundingClientRect();
       svgEle.setAttribute("width",String(gridDivBounds.width));
       svgEle.setAttribute("height",String(gridDivBounds.height)); 
     }
+
     if (category != null && advancementCategories.includes(category)) {
       let coordinatesSet: Set<{type:"polyline",coords:polyCoordinates}|{type:"line",coords:lineCoordinates}> = new Set(); 
       for (const advancementGroup of this.templateLineMap[category]) {
@@ -166,6 +168,7 @@ class MCAdvancementContainer extends HTMLElement {
           }
         } 
       }
+
       for (const color of ["black","white"]) {
         for (const cGroup of coordinatesSet.values()) {
           if (cGroup.type == "line") {
@@ -178,6 +181,7 @@ class MCAdvancementContainer extends HTMLElement {
         }
       }
     }
+    
     return svgEle
   }
 

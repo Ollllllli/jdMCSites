@@ -226,6 +226,19 @@ class AdvancementsAPI extends CacheManager {
       return null;
   }
 
+  getAllCompleted(uuid: UUID): string[] {
+    let completed: string[] = [];
+    const uuidAdv = this.advancements.get(uuid);
+    if (uuidAdv != null) {
+      for (const advancement in uuidAdv) {
+        if (uuidAdv[advancement as MCNamespaceType].done == true) {
+          completed.push(advancement.replace("minecraft:",""));
+        }
+      }
+    }
+    return completed;
+  }
+
   /** Update the Advancements Cache, storing a record per uuid. */
   private async updateTargetAdvancementsCache(serverUpdateTimestamp: DateString, uuid: UUID) {
     const advancements = await this.fetchAPI(`advancements/${uuid}`);
