@@ -164,9 +164,9 @@ class Renderer {
         const bottomLeft = this.renderMap.pointInRender(shape.bottomLeft);
         const bottomRight = this.renderMap.pointInRender(shape.bottomRight);
         this.renderContext.moveTo(topLeft[0], topLeft[1]);
-        this.renderContext.lineTo(bottomLeft[0], bottomLeft[1] + 1);
-        this.renderContext.lineTo(bottomRight[0] + 1, bottomRight[1] + 1);
-        this.renderContext.lineTo(topRight[0] + 1, topRight[1]);
+        this.renderContext.lineTo(bottomLeft[0], bottomLeft[1]);
+        this.renderContext.lineTo(bottomRight[0], bottomRight[1]);
+        this.renderContext.lineTo(topRight[0], topRight[1]);
         this.renderContext.fill();
     }
     renderQuad(canvasContext, shape, texture, filterOrShader) {

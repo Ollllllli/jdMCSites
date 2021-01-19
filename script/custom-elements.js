@@ -1,3 +1,27 @@
+function generateSelect(keyValue) {
+    const selectWrapper = document.createElement("div");
+    selectWrapper.classList.add("select-wrapper");
+    const selectElement = document.createElement("select");
+    selectElement.onfocus = ()=>{
+        selectElement.size = selectElement.children.length;
+    };
+    selectElement.onblur = ()=>{
+        selectElement.size = 0;
+    };
+    selectElement.onchange = ()=>{
+        selectElement.size = 1;
+        selectElement.blur();
+    };
+    for (const [optionValue, optionLabel] of keyValue){
+        const optionElement = new Option(optionLabel, optionValue);
+        selectElement.append(optionElement);
+    }
+    selectWrapper.append(selectElement);
+    return {
+        root: selectWrapper,
+        select: selectElement
+    };
+}
 class MCAdvancement extends HTMLElement {
     static advancementAttributes = [
         'col',
@@ -45,6 +69,27 @@ class MCAdvancement extends HTMLElement {
             }
         }
     }
+    get getMiddle() {
+        const ownBounds = this.getBoundingClientRect();
+        if (this.parentElement != null && this.parentElement.tagName == "DIV") {
+            const parentBounds = this.parentElement.getBoundingClientRect();
+            const xMiddleRelativeToParent = Math.ceil(ownBounds.x - parentBounds.x + ownBounds.width / 2);
+            const yMiddleRelativeToParent = Math.ceil(ownBounds.y - parentBounds.y + ownBounds.height / 2);
+            return {
+                x: xMiddleRelativeToParent,
+                y: yMiddleRelativeToParent,
+                relativeToParent: true
+            };
+        } else {
+            const xMiddleRelativeToSelf = Math.ceil(ownBounds.x + ownBounds.width / 2);
+            const yMiddleRelativeToSelf = Math.ceil(ownBounds.y + ownBounds.height / 2);
+            return {
+                x: xMiddleRelativeToSelf,
+                y: yMiddleRelativeToSelf,
+                relativeToParent: false
+            };
+        }
+    }
     //When element is added to DOM
     connectedCallback() {
         //Goes through the attributes and updates their respective function
@@ -88,7 +133,7 @@ class MCAdvancement extends HTMLElement {
                 "iron_pickaxe"
             ],
             deflect_arrow: [
-                "item",
+                "block",
                 "shield"
             ],
             form_obsidian: [
@@ -167,7 +212,7 @@ class MCAdvancement extends HTMLElement {
                 "ghast_tear"
             ],
             loot_bastion: [
-                "item",
+                "block",
                 "chest"
             ],
             use_lodestone: [
@@ -179,7 +224,7 @@ class MCAdvancement extends HTMLElement {
                 "netherite_chestplate"
             ],
             get_wither_skull: [
-                "item",
+                "block",
                 "wither_skeleton_skull"
             ],
             obtain_blaze_rod: [
@@ -226,11 +271,11 @@ class MCAdvancement extends HTMLElement {
                 "end_stone"
             ],
             kill_dragon: [
-                "item",
+                "block",
                 "dragon_head"
             ],
             dragon_egg: [
-                "item",
+                "block",
                 "dragon_egg"
             ],
             enter_end_gateway: [
@@ -265,7 +310,7 @@ class MCAdvancement extends HTMLElement {
                 "map"
             ],
             voluntary_exile: [
-                "item",
+                "block",
                 "ominous_banner"
             ],
             kill_a_mob: [
@@ -285,11 +330,11 @@ class MCAdvancement extends HTMLElement {
                 "crossbow_standby"
             ],
             sleep_in_bed: [
-                "item",
+                "block",
                 "red_bed"
             ],
             hero_of_the_village: [
-                "item",
+                "block",
                 "ominous_banner"
             ],
             throw_trident: [
@@ -400,22 +445,39 @@ const advancementCategories = [
     "adventure",
     "husbandry"
 ];
-class MCAdvancementContainer extends HTMLElement {
+class MCAdvancementView extends HTMLElement {
     // Needed for attributeChangedCallback
     static get observedAttributes() {
         return [
             "category"
         ];
     }
+    firstTime = true;
+    cachedSVGs = {
+        story: null,
+        nether: null,
+        end: null,
+        adventure: null,
+        husbandry: null
+    };
     constructor(){
         super();
     }
+    cleanOutView() {
+        const gridDiv = this.querySelector("mc-advancement-view>div");
+        const svgEle = this.querySelector("mc-advancement-view>svg");
+        if (gridDiv != null) gridDiv.remove();
+        if (svgEle != null) svgEle.remove();
+        this.removeAttribute("style");
+    }
     generateAdvancementDiv(category) {
         const mainGrid = document.createElement("div");
-        mainGrid.style.display = "grid";
-        mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},20px)`;
-        mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},20px)`;
-        mainGrid.style.gap = "10px";
+        //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
+        //x=4 for width=1000px
+        mainGrid.style.display = "inline-grid";
+        mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},48px)`;
+        mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},48px)`;
+        mainGrid.style.gap = "8px";
         for(let i = 0; i < this.templates[category].length; i++){
             const advTemplate = this.templates[category][i];
             mainGrid.appendChild(this.createAdvancement(category, ...advTemplate));
@@ -430,33 +492,121 @@ class MCAdvancementContainer extends HTMLElement {
         advancementElement.setAttribute("col", String(col));
         return advancementElement;
     }
+    //Optimize:false is to render coords list every time
+    //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
+    //clean this up
+    generateUnderlaySVG(category, optimise) {
+        const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svgEle.style.position = "absolute";
+        svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
+        if (this.querySelector("mc-advancement-view>div") != null) {
+            const gridDivBounds = this.querySelector("mc-advancement-view>div").getBoundingClientRect();
+            svgEle.setAttribute("width", String(gridDivBounds.width));
+            svgEle.setAttribute("height", String(gridDivBounds.height));
+        }
+        let coordinatesSet = new Set();
+        for (const advancementGroup of this.templateLineMap[category]){
+            for (const endAdv of advancementGroup[1]){
+                const linkingCoords = this.getLinkingCoords(category + "/" + advancementGroup[0], category + "/" + endAdv);
+                if (linkingCoords != null) {
+                    coordinatesSet.add(linkingCoords);
+                }
+            }
+        }
+        for (const color of [
+            "black",
+            "white"
+        ]){
+            for (const cGroup of coordinatesSet.values()){
+                if (cGroup.type == "line") {
+                    const coords = cGroup.coords;
+                    svgEle.innerHTML += `<line id="${color}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}"></line>`;
+                } else if (cGroup.type == "polyline") {
+                    const coords = cGroup.coords;
+                    svgEle.innerHTML += `<polyline id="${color}" points="${coords.x1},${coords.y1} ${coords.x2},${coords.y2} ${coords.x3},${coords.y3} ${coords.x4},${coords.y4}"></polyline>`;
+                }
+            }
+        }
+        return svgEle;
+    }
+    getLinkingCoords(advancement1ns, advancement2ns) {
+        const advancement1 = this.querySelector(`mc-advancement[ns="${advancement1ns}"]`);
+        const advancement2 = this.querySelector(`mc-advancement[ns="${advancement2ns}"]`);
+        if (advancement1 != null && advancement2 != null) {
+            let coords;
+            const a1m = advancement1.getMiddle;
+            const a2m = advancement2.getMiddle;
+            if (a1m.y == a2m.y) {
+                coords = {
+                    type: "line",
+                    coords: {
+                        x1: a1m.x,
+                        y1: a1m.y,
+                        x2: a2m.x,
+                        y2: a2m.y
+                    }
+                };
+            } else {
+                const xAvg = Math.ceil((a1m.x + a2m.x) / 2);
+                coords = {
+                    type: "polyline",
+                    coords: {
+                        x1: a1m.x,
+                        y1: a1m.y,
+                        x2: xAvg,
+                        y2: a1m.y,
+                        x3: xAvg,
+                        y3: a2m.y,
+                        x4: a2m.x,
+                        y4: a2m.y
+                    }
+                };
+            }
+            return coords;
+        } else {
+            return null;
+        }
+    }
+    updateElement(category) {
+        this.cleanOutView();
+        if (advancementCategories.includes(category)) {
+            this.style.display = "block";
+            this.style.textAlign = "center";
+            this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
+            this.style.backgroundSize = "64px";
+            this.style.padding = "8px";
+            const advancementView = this.generateAdvancementDiv(category);
+            this.appendChild(advancementView);
+            const cachedSVGEle = this.cachedSVGs[category];
+            if (cachedSVGEle == null) {
+                const svgEle = this.generateUnderlaySVG(category, false);
+                this.insertBefore(svgEle, this.querySelector("mc-advancement-view>div"));
+                this.cachedSVGs[category] = svgEle;
+            } else {
+                this.insertBefore(cachedSVGEle, this.querySelector("mc-advancement-view>div"));
+            }
+        }
+    }
     //When element is added to DOM
     connectedCallback() {
-        const gridDiv = this.querySelector("div");
-        if (gridDiv != null) gridDiv.remove();
-        const containerStyle = document.createElement("style");
-        containerStyle.innerHTML = this.advancementStyling;
-        this.appendChild(containerStyle);
+        if (this.firstTime) this.firstTime = false;
+        console.log("connectedCallback");
+        const viewStyle = document.createElement("style");
+        viewStyle.innerHTML = this.advancementStyling;
+        this.appendChild(viewStyle);
         const category = this.getAttribute("category");
-        if (advancementCategories.includes(category)) {
-            const advancementContainer = this.generateAdvancementDiv(category);
-            this.appendChild(advancementContainer);
+        if (category != null) {
+            this.updateElement(category);
         }
     }
     //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
     attributeChangedCallback(name, _, newValue) {
-        if (name == "category") {
-            console.log("category");
+        console.log("attributeChangedCallback");
+        if (name == "category" && !this.firstTime) {
             const category = newValue;
-            const gridDiv = this.querySelector("div");
-            if (gridDiv) gridDiv.remove();
-            if (advancementCategories.includes(category)) {
-                const advancementContainer = this.generateAdvancementDiv(category);
-                this.appendChild(advancementContainer);
-            }
+            this.updateElement(category);
         }
     }
-    //Not sure how to solve this issue, i tried making it as small footprint as possible, other option is to use the actual elements as template, but i feel thats ALOT more
     templates = {
         story: [
             [
@@ -916,8 +1066,301 @@ class MCAdvancementContainer extends HTMLElement {
             columns: 6
         }
     };
+    templateLineMap = {
+        story: [
+            [
+                "root",
+                [
+                    "mine_stone"
+                ]
+            ],
+            [
+                "mine_stone",
+                [
+                    "upgrade_tools"
+                ]
+            ],
+            [
+                "upgrade_tools",
+                [
+                    "smelt_iron"
+                ]
+            ],
+            [
+                "smelt_iron",
+                [
+                    "obtain_armor",
+                    "lava_bucket",
+                    "iron_tools"
+                ]
+            ],
+            [
+                "obtain_armor",
+                [
+                    "deflect_arrow"
+                ]
+            ],
+            [
+                "lava_bucket",
+                [
+                    "form_obsidian"
+                ]
+            ],
+            [
+                "form_obsidian",
+                [
+                    "enter_the_nether"
+                ]
+            ],
+            [
+                "enter_the_nether",
+                [
+                    "cure_zombie_villager",
+                    "follow_ender_eye"
+                ]
+            ],
+            [
+                "follow_ender_eye",
+                [
+                    "enter_the_end"
+                ]
+            ],
+            [
+                "iron_tools",
+                [
+                    "mine_diamond"
+                ]
+            ],
+            [
+                "mine_diamond",
+                [
+                    "shiny_gear",
+                    "enchant_item"
+                ]
+            ], 
+        ],
+        nether: [
+            [
+                "root",
+                [
+                    "return_to_sender",
+                    "find_bastion",
+                    "obtain_ancient_debris",
+                    "fast_travel",
+                    "find_fortress",
+                    "obtain_crying_obsidian",
+                    "distract_piglin",
+                    "ride_strider"
+                ]
+            ],
+            [
+                "return_to_sender",
+                [
+                    "uneasy_alliance"
+                ]
+            ],
+            [
+                "find_bastion",
+                [
+                    "loot_bastion"
+                ]
+            ],
+            [
+                "obtain_ancient_debris",
+                [
+                    "use_lodestone",
+                    "netherite_armor"
+                ]
+            ],
+            [
+                "find_fortress",
+                [
+                    "get_wither_skull",
+                    "obtain_blaze_rod"
+                ]
+            ],
+            [
+                "get_wither_skull",
+                [
+                    "summon_wither"
+                ]
+            ],
+            [
+                "summon_wither",
+                [
+                    "create_beacon"
+                ]
+            ],
+            [
+                "create_beacon",
+                [
+                    "create_full_beacon"
+                ]
+            ],
+            [
+                "obtain_blaze_rod",
+                [
+                    "brew_potion"
+                ]
+            ],
+            [
+                "brew_potion",
+                [
+                    "all_potions"
+                ]
+            ],
+            [
+                "all_potions",
+                [
+                    "all_effects"
+                ]
+            ],
+            [
+                "obtain_crying_obsidian",
+                [
+                    "charge_respawn_anchor"
+                ]
+            ],
+            [
+                "ride_strider",
+                [
+                    "explore_nether"
+                ]
+            ], 
+        ],
+        end: [
+            [
+                "root",
+                [
+                    "kill_dragon"
+                ]
+            ],
+            [
+                "kill_dragon",
+                [
+                    "dragon_egg",
+                    "enter_end_gateway",
+                    "respawn_dragon",
+                    "dragon_breath"
+                ]
+            ],
+            [
+                "enter_end_gateway",
+                [
+                    "find_end_city"
+                ]
+            ],
+            [
+                "find_end_city",
+                [
+                    "elytra",
+                    "levitate"
+                ]
+            ], 
+        ],
+        adventure: [
+            [
+                "root",
+                [
+                    "voluntary_exile",
+                    "kill_a_mob",
+                    "trade",
+                    "honey_block_slide",
+                    "ol_betsy",
+                    "sleep_in_bed"
+                ]
+            ],
+            [
+                "voluntary_exile",
+                [
+                    "hero_of_the_village"
+                ]
+            ],
+            [
+                "kill_a_mob",
+                [
+                    "throw_trident",
+                    "shoot_arrow",
+                    "kill_all_mobs",
+                    "totem_of_undying"
+                ]
+            ],
+            [
+                "throw_trident",
+                [
+                    "very_very_frightening"
+                ]
+            ],
+            [
+                "shoot_arrow",
+                [
+                    "sniper_duel",
+                    "bullseye"
+                ]
+            ],
+            [
+                "trade",
+                [
+                    "summon_iron_golem"
+                ]
+            ],
+            [
+                "ol_betsy",
+                [
+                    "two_birds_one_arrow",
+                    "whos_the_pillager_now",
+                    "arbalistic"
+                ]
+            ],
+            [
+                "sleep_in_bed",
+                [
+                    "adventuring_time"
+                ]
+            ], 
+        ],
+        husbandry: [
+            [
+                "root",
+                [
+                    "safely_harvest_honey",
+                    "breed_an_animal",
+                    "tame_an_animal",
+                    "fishy_business",
+                    "silk_touch_nest",
+                    "plant_seed"
+                ]
+            ],
+            [
+                "breed_an_animal",
+                [
+                    "bred_all_animals"
+                ]
+            ],
+            [
+                "tame_an_animal",
+                [
+                    "complete_catalogue"
+                ]
+            ],
+            [
+                "fishy_business",
+                [
+                    "tactical_fishing"
+                ]
+            ],
+            [
+                "plant_seed",
+                [
+                    "balanced_diet",
+                    "obtain_netherite_hoe"
+                ]
+            ], 
+        ]
+    };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      padding: 8px;\n      display: inline-block;\n\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
 }
 const imageDir = document.currentScript.src + "/../../img/";
 const blocksConfigPromise = fetch(`${imageDir}block/blocks.json`).then((v)=>{
@@ -1049,5 +1492,5 @@ class MCItemIcon extends HTMLElement {
 // new MCItemIcon({ type: "block", name: "cobblestone" });
 document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
-customElements.define('mc-advancement-container', MCAdvancementContainer);
+customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);

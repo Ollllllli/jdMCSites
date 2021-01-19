@@ -141,7 +141,7 @@ class StatsAPI extends CacheManager {
 }
 
 class PlayerAPI extends CacheManager {
-  players: Map<string, Player> = new Map();
+  players: Map<UUID, Player> = new Map();
 
   /** Ensure cache is up to date, and prepare properties. */
   async init() {
@@ -224,6 +224,19 @@ class AdvancementsAPI extends CacheManager {
       return Object.values(progress.criteria).sort((a,b)=>b.valueOf() - a.valueOf())[0] ?? null;
     else
       return null;
+  }
+
+  getAllCompleted(uuid: UUID): string[] {
+    let completed: string[] = [];
+    const uuidAdv = this.advancements.get(uuid);
+    if (uuidAdv != null) {
+      for (const advancement in uuidAdv) {
+        if (uuidAdv[advancement as MCNamespaceType].done == true) {
+          completed.push(advancement.replace("minecraft:",""));
+        }
+      }
+    }
+    return completed;
   }
 
   /** Update the Advancements Cache, storing a record per uuid. */

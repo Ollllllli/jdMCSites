@@ -1,3 +1,4 @@
+import { delay } from "https://deno.land/std@0.83.0/async/delay.ts";
 import { walk, exists } from "https://deno.land/std@0.83.0/fs/mod.ts";
 import { basename } from "https://deno.land/std@0.83.0/path/mod.ts";
 
@@ -36,6 +37,7 @@ if (import.meta.main) {
   for await (const event of Deno.watchFs("./script/")) {
     if (event.kind === "modify" && event.paths[0].endsWith(".ts")) {
       if (debounceList[event.paths[0]] != true) {
+        await delay(100);
         debounceList[event.paths[0]] = true;
         await transpileScript(event.paths[0]);
         setTimeout(()=>{
