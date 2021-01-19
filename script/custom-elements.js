@@ -478,9 +478,9 @@ class MCAdvancementView extends HTMLElement {
         mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},48px)`;
         mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},48px)`;
         mainGrid.style.gap = "8px";
-        for(let i = 0; i < this.templates[category].length; i++){
-            const advTemplate = this.templates[category][i];
-            mainGrid.appendChild(this.createAdvancement(category, ...advTemplate));
+        for(const advancementName in this.advancementTemplates[category]){
+            const advTemplate = this.advancementTemplates[category][advancementName];
+            mainGrid.appendChild(this.createAdvancement(category, advancementName, advTemplate.row, advTemplate.col, advTemplate.type));
         }
         return mainGrid;
     }
@@ -505,9 +505,10 @@ class MCAdvancementView extends HTMLElement {
             svgEle.setAttribute("height", String(gridDivBounds.height));
         }
         let coordinatesSet = new Set();
-        for (const advancementGroup of this.templateLineMap[category]){
-            for (const endAdv of advancementGroup[1]){
-                const linkingCoords = this.getLinkingCoords(category + "/" + advancementGroup[0], category + "/" + endAdv);
+        for(const advancementName in this.advancementTemplates[category]){
+            const advTemplate = this.advancementTemplates[category][advancementName];
+            for (const endAdv of advTemplate.children){
+                const linkingCoords = this.getLinkingCoords(category + "/" + advancementName, category + "/" + endAdv);
                 if (linkingCoords != null) {
                     coordinatesSet.add(linkingCoords);
                 }
@@ -607,442 +608,613 @@ class MCAdvancementView extends HTMLElement {
             this.updateElement(category);
         }
     }
-    templates = {
-        story: [
-            [
-                "root",
-                4,
-                1
-            ],
-            [
-                "mine_stone",
-                4,
-                3
-            ],
-            [
-                "upgrade_tools",
-                4,
-                5
-            ],
-            [
-                "smelt_iron",
-                4,
-                7
-            ],
-            [
-                "obtain_armor",
-                1,
-                9
-            ],
-            [
-                "lava_bucket",
-                3,
-                9
-            ],
-            [
-                "iron_tools",
-                6,
-                9
-            ],
-            [
-                "deflect_arrow",
-                1,
-                11
-            ],
-            [
-                "form_obsidian",
-                3,
-                11
-            ],
-            [
-                "mine_diamond",
-                6,
-                11
-            ],
-            [
-                "enter_the_nether",
-                3,
-                13
-            ],
-            [
-                "shiny_gear",
-                5,
-                13
-            ],
-            [
-                "enchant_item",
-                7,
-                13
-            ],
-            [
-                "cure_zombie_villager",
-                2,
-                15,
-                "goal"
-            ],
-            [
-                "follow_ender_eye",
-                4,
-                15
-            ],
-            [
-                "enter_the_end",
-                4,
-                17
-            ]
-        ],
-        nether: [
-            [
-                "root",
-                9,
-                1
-            ],
-            [
-                "return_to_sender",
-                1,
-                3
-            ],
-            [
-                "find_bastion",
-                3,
-                3
-            ],
-            [
-                "obtain_ancient_debris",
-                6,
-                3
-            ],
-            [
-                "fast_travel",
-                8,
-                3,
-                "challenge"
-            ],
-            [
-                "find_fortress",
-                10,
-                3
-            ],
-            [
-                "obtain_crying_obsidian",
-                13,
-                3
-            ],
-            [
-                "distract_piglin",
-                15,
-                3
-            ],
-            [
-                "ride_strider",
-                17,
-                3
-            ],
-            [
-                "uneasy_alliance",
-                1,
-                5,
-                "challenge"
-            ],
-            [
-                "loot_bastion",
-                3,
-                5
-            ],
-            [
-                "use_lodestone",
-                5,
-                5
-            ],
-            [
-                "netherite_armor",
-                7,
-                5,
-                "challenge"
-            ],
-            [
-                "get_wither_skull",
-                9,
-                5
-            ],
-            [
-                "obtain_blaze_rod",
-                11,
-                5
-            ],
-            [
-                "charge_respawn_anchor",
-                13,
-                5
-            ],
-            [
-                "explore_nether",
-                17,
-                5,
-                "challenge"
-            ],
-            [
-                "summon_wither",
-                9,
-                7
-            ],
-            [
-                "brew_potion",
-                11,
-                7
-            ],
-            [
-                "create_beacon",
-                9,
-                9
-            ],
-            [
-                "all_potions",
-                11,
-                9,
-                "challenge"
-            ],
-            [
-                "create_full_beacon",
-                9,
-                11,
-                "goal"
-            ],
-            [
-                "all_effects",
-                11,
-                11,
-                "challenge"
-            ]
-        ],
-        end: [
-            [
-                "root",
-                4,
-                1
-            ],
-            [
-                "kill_dragon",
-                4,
-                3
-            ],
-            [
-                "dragon_egg",
-                1,
-                5,
-                "goal"
-            ],
-            [
-                "enter_end_gateway",
-                3,
-                5
-            ],
-            [
-                "respawn_dragon",
-                5,
-                5,
-                "goal"
-            ],
-            [
-                "dragon_breath",
-                7,
-                5,
-                "goal"
-            ],
-            [
-                "find_end_city",
-                3,
-                7
-            ],
-            [
-                "elytra",
-                2,
-                9
-            ],
-            [
-                "levitate",
-                4,
-                9,
-                "challenge"
-            ]
-        ],
-        adventure: [
-            [
-                "root",
-                11,
-                1
-            ],
-            [
-                "voluntary_exile",
-                1,
-                3
-            ],
-            [
-                "kill_a_mob",
-                7,
-                3
-            ],
-            [
-                "trade",
-                12,
-                3
-            ],
-            [
-                "honey_block_slide",
-                14,
-                3
-            ],
-            [
-                "ol_betsy",
-                16,
-                3
-            ],
-            [
-                "sleep_in_bed",
-                20,
-                3
-            ],
-            [
-                "hero_of_the_village",
-                1,
-                5,
-                "challenge"
-            ],
-            [
-                "throw_trident",
-                3,
-                5
-            ],
-            [
-                "shoot_arrow",
-                6,
-                5
-            ],
-            [
-                "kill_all_mobs",
-                8,
-                5,
-                "challenge"
-            ],
-            [
-                "totem_of_undying",
-                10,
-                5,
-                "goal"
-            ],
-            [
-                "summon_iron_golem",
-                12,
-                5,
-                "goal"
-            ],
-            [
-                "two_birds_one_arrow",
-                14,
-                5,
-                "challenge"
-            ],
-            [
-                "whos_the_pillager_now",
-                16,
-                5
-            ],
-            [
-                "arbalistic",
-                18,
-                5,
-                "challenge"
-            ],
-            [
-                "adventuring_time",
-                20,
-                5,
-                "challenge"
-            ],
-            [
-                "very_very_frightening",
-                3,
-                7
-            ],
-            [
-                "sniper_duel",
-                5,
-                7,
-                "challenge"
-            ],
-            [
-                "bullseye",
-                7,
-                7,
-                "challenge"
-            ]
-        ],
-        husbandry: [
-            [
-                "root",
-                6,
-                1
-            ],
-            [
-                "safely_harvest_honey",
-                1,
-                3
-            ],
-            [
-                "breed_an_animal",
-                3,
-                3
-            ],
-            [
-                "tame_an_animal",
-                5,
-                3
-            ],
-            [
-                "fishy_business",
-                7,
-                3
-            ],
-            [
-                "silk_touch_nest",
-                9,
-                3
-            ],
-            [
-                "plant_seed",
-                11,
-                3
-            ],
-            [
-                "bred_all_animals",
-                3,
-                5,
-                "challenge"
-            ],
-            [
-                "complete_catalogue",
-                5,
-                5,
-                "challenge"
-            ],
-            [
-                "tactical_fishing",
-                7,
-                5
-            ],
-            [
-                "balanced_diet",
-                10,
-                5,
-                "challenge"
-            ],
-            [
-                "obtain_netherite_hoe",
-                12,
-                5,
-                "challenge"
-            ]
-        ]
+    advancementTemplates = {
+        "story": {
+            "root": {
+                "row": 4,
+                "col": 1,
+                "type": "normal",
+                "children": [
+                    "mine_stone"
+                ]
+            },
+            "mine_stone": {
+                "row": 4,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "upgrade_tools"
+                ]
+            },
+            "upgrade_tools": {
+                "row": 4,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "smelt_iron"
+                ]
+            },
+            "smelt_iron": {
+                "row": 4,
+                "col": 7,
+                "type": "normal",
+                "children": [
+                    "obtain_armor",
+                    "lava_bucket",
+                    "iron_tools"
+                ]
+            },
+            "obtain_armor": {
+                "row": 1,
+                "col": 9,
+                "type": "normal",
+                "children": [
+                    "deflect_arrow"
+                ]
+            },
+            "lava_bucket": {
+                "row": 3,
+                "col": 9,
+                "type": "normal",
+                "children": [
+                    "form_obsidian"
+                ]
+            },
+            "iron_tools": {
+                "row": 6,
+                "col": 9,
+                "type": "normal",
+                "children": [
+                    "mine_diamond"
+                ]
+            },
+            "deflect_arrow": {
+                "row": 1,
+                "col": 11,
+                "type": "normal",
+                "children": []
+            },
+            "form_obsidian": {
+                "row": 3,
+                "col": 11,
+                "type": "normal",
+                "children": [
+                    "enter_the_nether"
+                ]
+            },
+            "mine_diamond": {
+                "row": 6,
+                "col": 11,
+                "type": "normal",
+                "children": [
+                    "shiny_gear",
+                    "enchant_item"
+                ]
+            },
+            "enter_the_nether": {
+                "row": 3,
+                "col": 13,
+                "type": "normal",
+                "children": [
+                    "cure_zombie_villager",
+                    "follow_ender_eye"
+                ]
+            },
+            "shiny_gear": {
+                "row": 5,
+                "col": 13,
+                "type": "normal",
+                "children": []
+            },
+            "enchant_item": {
+                "row": 7,
+                "col": 13,
+                "type": "normal",
+                "children": []
+            },
+            "cure_zombie_villager": {
+                "row": 2,
+                "col": 15,
+                "type": "goal",
+                "children": []
+            },
+            "follow_ender_eye": {
+                "row": 4,
+                "col": 15,
+                "type": "normal",
+                "children": [
+                    "enter_the_end"
+                ]
+            },
+            "enter_the_end": {
+                "row": 4,
+                "col": 17,
+                "type": "normal",
+                "children": []
+            }
+        },
+        "nether": {
+            "root": {
+                "row": 9,
+                "col": 1,
+                "type": "normal",
+                "children": [
+                    "return_to_sender",
+                    "find_bastion",
+                    "obtain_ancient_debris",
+                    "fast_travel",
+                    "find_fortress",
+                    "obtain_crying_obsidian",
+                    "distract_piglin",
+                    "ride_strider"
+                ]
+            },
+            "return_to_sender": {
+                "row": 1,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "uneasy_alliance"
+                ]
+            },
+            "find_bastion": {
+                "row": 3,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "loot_bastion"
+                ]
+            },
+            "obtain_ancient_debris": {
+                "row": 6,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "use_lodestone",
+                    "netherite_armor"
+                ]
+            },
+            "fast_travel": {
+                "row": 8,
+                "col": 3,
+                "type": "challenge",
+                "children": []
+            },
+            "find_fortress": {
+                "row": 10,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "get_wither_skull",
+                    "obtain_blaze_rod"
+                ]
+            },
+            "obtain_crying_obsidian": {
+                "row": 13,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "charge_respawn_anchor"
+                ]
+            },
+            "distract_piglin": {
+                "row": 15,
+                "col": 3,
+                "type": "normal",
+                "children": []
+            },
+            "ride_strider": {
+                "row": 17,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "explore_nether"
+                ]
+            },
+            "uneasy_alliance": {
+                "row": 1,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "loot_bastion": {
+                "row": 3,
+                "col": 5,
+                "type": "normal",
+                "children": []
+            },
+            "use_lodestone": {
+                "row": 5,
+                "col": 5,
+                "type": "normal",
+                "children": []
+            },
+            "netherite_armor": {
+                "row": 7,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "get_wither_skull": {
+                "row": 9,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "summon_wither"
+                ]
+            },
+            "obtain_blaze_rod": {
+                "row": 11,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "brew_potion"
+                ]
+            },
+            "charge_respawn_anchor": {
+                "row": 13,
+                "col": 5,
+                "type": "normal",
+                "children": []
+            },
+            "explore_nether": {
+                "row": 17,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "summon_wither": {
+                "row": 9,
+                "col": 7,
+                "type": "normal",
+                "children": [
+                    "create_beacon"
+                ]
+            },
+            "brew_potion": {
+                "row": 11,
+                "col": 7,
+                "type": "normal",
+                "children": [
+                    "all_potions"
+                ]
+            },
+            "create_beacon": {
+                "row": 9,
+                "col": 9,
+                "type": "normal",
+                "children": [
+                    "create_full_beacon"
+                ]
+            },
+            "all_potions": {
+                "row": 11,
+                "col": 9,
+                "type": "challenge",
+                "children": [
+                    "all_effects"
+                ]
+            },
+            "create_full_beacon": {
+                "row": 9,
+                "col": 11,
+                "type": "goal",
+                "children": []
+            },
+            "all_effects": {
+                "row": 11,
+                "col": 11,
+                "type": "challenge",
+                "children": []
+            }
+        },
+        "end": {
+            "root": {
+                "row": 4,
+                "col": 1,
+                "type": "normal",
+                "children": [
+                    "kill_dragon"
+                ]
+            },
+            "kill_dragon": {
+                "row": 4,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "dragon_egg",
+                    "enter_end_gateway",
+                    "respawn_dragon",
+                    "dragon_breath"
+                ]
+            },
+            "dragon_egg": {
+                "row": 1,
+                "col": 5,
+                "type": "goal",
+                "children": []
+            },
+            "enter_end_gateway": {
+                "row": 3,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "find_end_city"
+                ]
+            },
+            "respawn_dragon": {
+                "row": 5,
+                "col": 5,
+                "type": "goal",
+                "children": []
+            },
+            "dragon_breath": {
+                "row": 7,
+                "col": 5,
+                "type": "goal",
+                "children": []
+            },
+            "find_end_city": {
+                "row": 3,
+                "col": 7,
+                "type": "normal",
+                "children": [
+                    "elytra",
+                    "levitate"
+                ]
+            },
+            "elytra": {
+                "row": 2,
+                "col": 9,
+                "type": "normal",
+                "children": []
+            },
+            "levitate": {
+                "row": 4,
+                "col": 9,
+                "type": "challenge",
+                "children": []
+            }
+        },
+        "adventure": {
+            "root": {
+                "row": 11,
+                "col": 1,
+                "type": "normal",
+                "children": [
+                    "voluntary_exile",
+                    "kill_a_mob",
+                    "trade",
+                    "honey_block_slide",
+                    "ol_betsy",
+                    "sleep_in_bed"
+                ]
+            },
+            "voluntary_exile": {
+                "row": 1,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "hero_of_the_village"
+                ]
+            },
+            "kill_a_mob": {
+                "row": 7,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "throw_trident",
+                    "shoot_arrow",
+                    "kill_all_mobs",
+                    "totem_of_undying"
+                ]
+            },
+            "trade": {
+                "row": 12,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "summon_iron_golem"
+                ]
+            },
+            "honey_block_slide": {
+                "row": 14,
+                "col": 3,
+                "type": "normal",
+                "children": []
+            },
+            "ol_betsy": {
+                "row": 16,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "two_birds_one_arrow",
+                    "whos_the_pillager_now",
+                    "arbalistic"
+                ]
+            },
+            "sleep_in_bed": {
+                "row": 20,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "adventuring_time"
+                ]
+            },
+            "hero_of_the_village": {
+                "row": 1,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "throw_trident": {
+                "row": 3,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "very_very_frightening"
+                ]
+            },
+            "shoot_arrow": {
+                "row": 6,
+                "col": 5,
+                "type": "normal",
+                "children": [
+                    "sniper_duel",
+                    "bullseye"
+                ]
+            },
+            "kill_all_mobs": {
+                "row": 8,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "totem_of_undying": {
+                "row": 10,
+                "col": 5,
+                "type": "goal",
+                "children": []
+            },
+            "summon_iron_golem": {
+                "row": 12,
+                "col": 5,
+                "type": "goal",
+                "children": []
+            },
+            "two_birds_one_arrow": {
+                "row": 14,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "whos_the_pillager_now": {
+                "row": 16,
+                "col": 5,
+                "type": "normal",
+                "children": []
+            },
+            "arbalistic": {
+                "row": 18,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "adventuring_time": {
+                "row": 20,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "very_very_frightening": {
+                "row": 3,
+                "col": 7,
+                "type": "normal",
+                "children": []
+            },
+            "sniper_duel": {
+                "row": 5,
+                "col": 7,
+                "type": "challenge",
+                "children": []
+            },
+            "bullseye": {
+                "row": 7,
+                "col": 7,
+                "type": "challenge",
+                "children": []
+            }
+        },
+        "husbandry": {
+            "root": {
+                "row": 6,
+                "col": 1,
+                "type": "normal",
+                "children": [
+                    "safely_harvest_honey",
+                    "breed_an_animal",
+                    "tame_an_animal",
+                    "fishy_business",
+                    "silk_touch_nest",
+                    "plant_seed"
+                ]
+            },
+            "safely_harvest_honey": {
+                "row": 1,
+                "col": 3,
+                "type": "normal",
+                "children": []
+            },
+            "breed_an_animal": {
+                "row": 3,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "bred_all_animals"
+                ]
+            },
+            "tame_an_animal": {
+                "row": 5,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "complete_catalogue"
+                ]
+            },
+            "fishy_business": {
+                "row": 7,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "tactical_fishing"
+                ]
+            },
+            "silk_touch_nest": {
+                "row": 9,
+                "col": 3,
+                "type": "normal",
+                "children": []
+            },
+            "plant_seed": {
+                "row": 11,
+                "col": 3,
+                "type": "normal",
+                "children": [
+                    "balanced_diet",
+                    "obtain_netherite_hoe"
+                ]
+            },
+            "bred_all_animals": {
+                "row": 3,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "complete_catalogue": {
+                "row": 5,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "tactical_fishing": {
+                "row": 7,
+                "col": 5,
+                "type": "normal",
+                "children": []
+            },
+            "balanced_diet": {
+                "row": 10,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            },
+            "obtain_netherite_hoe": {
+                "row": 12,
+                "col": 5,
+                "type": "challenge",
+                "children": []
+            }
+        }
     };
     templateSizes = {
         story: {
@@ -1065,298 +1237,6 @@ class MCAdvancementView extends HTMLElement {
             rows: 13,
             columns: 6
         }
-    };
-    templateLineMap = {
-        story: [
-            [
-                "root",
-                [
-                    "mine_stone"
-                ]
-            ],
-            [
-                "mine_stone",
-                [
-                    "upgrade_tools"
-                ]
-            ],
-            [
-                "upgrade_tools",
-                [
-                    "smelt_iron"
-                ]
-            ],
-            [
-                "smelt_iron",
-                [
-                    "obtain_armor",
-                    "lava_bucket",
-                    "iron_tools"
-                ]
-            ],
-            [
-                "obtain_armor",
-                [
-                    "deflect_arrow"
-                ]
-            ],
-            [
-                "lava_bucket",
-                [
-                    "form_obsidian"
-                ]
-            ],
-            [
-                "form_obsidian",
-                [
-                    "enter_the_nether"
-                ]
-            ],
-            [
-                "enter_the_nether",
-                [
-                    "cure_zombie_villager",
-                    "follow_ender_eye"
-                ]
-            ],
-            [
-                "follow_ender_eye",
-                [
-                    "enter_the_end"
-                ]
-            ],
-            [
-                "iron_tools",
-                [
-                    "mine_diamond"
-                ]
-            ],
-            [
-                "mine_diamond",
-                [
-                    "shiny_gear",
-                    "enchant_item"
-                ]
-            ], 
-        ],
-        nether: [
-            [
-                "root",
-                [
-                    "return_to_sender",
-                    "find_bastion",
-                    "obtain_ancient_debris",
-                    "fast_travel",
-                    "find_fortress",
-                    "obtain_crying_obsidian",
-                    "distract_piglin",
-                    "ride_strider"
-                ]
-            ],
-            [
-                "return_to_sender",
-                [
-                    "uneasy_alliance"
-                ]
-            ],
-            [
-                "find_bastion",
-                [
-                    "loot_bastion"
-                ]
-            ],
-            [
-                "obtain_ancient_debris",
-                [
-                    "use_lodestone",
-                    "netherite_armor"
-                ]
-            ],
-            [
-                "find_fortress",
-                [
-                    "get_wither_skull",
-                    "obtain_blaze_rod"
-                ]
-            ],
-            [
-                "get_wither_skull",
-                [
-                    "summon_wither"
-                ]
-            ],
-            [
-                "summon_wither",
-                [
-                    "create_beacon"
-                ]
-            ],
-            [
-                "create_beacon",
-                [
-                    "create_full_beacon"
-                ]
-            ],
-            [
-                "obtain_blaze_rod",
-                [
-                    "brew_potion"
-                ]
-            ],
-            [
-                "brew_potion",
-                [
-                    "all_potions"
-                ]
-            ],
-            [
-                "all_potions",
-                [
-                    "all_effects"
-                ]
-            ],
-            [
-                "obtain_crying_obsidian",
-                [
-                    "charge_respawn_anchor"
-                ]
-            ],
-            [
-                "ride_strider",
-                [
-                    "explore_nether"
-                ]
-            ], 
-        ],
-        end: [
-            [
-                "root",
-                [
-                    "kill_dragon"
-                ]
-            ],
-            [
-                "kill_dragon",
-                [
-                    "dragon_egg",
-                    "enter_end_gateway",
-                    "respawn_dragon",
-                    "dragon_breath"
-                ]
-            ],
-            [
-                "enter_end_gateway",
-                [
-                    "find_end_city"
-                ]
-            ],
-            [
-                "find_end_city",
-                [
-                    "elytra",
-                    "levitate"
-                ]
-            ], 
-        ],
-        adventure: [
-            [
-                "root",
-                [
-                    "voluntary_exile",
-                    "kill_a_mob",
-                    "trade",
-                    "honey_block_slide",
-                    "ol_betsy",
-                    "sleep_in_bed"
-                ]
-            ],
-            [
-                "voluntary_exile",
-                [
-                    "hero_of_the_village"
-                ]
-            ],
-            [
-                "kill_a_mob",
-                [
-                    "throw_trident",
-                    "shoot_arrow",
-                    "kill_all_mobs",
-                    "totem_of_undying"
-                ]
-            ],
-            [
-                "throw_trident",
-                [
-                    "very_very_frightening"
-                ]
-            ],
-            [
-                "shoot_arrow",
-                [
-                    "sniper_duel",
-                    "bullseye"
-                ]
-            ],
-            [
-                "trade",
-                [
-                    "summon_iron_golem"
-                ]
-            ],
-            [
-                "ol_betsy",
-                [
-                    "two_birds_one_arrow",
-                    "whos_the_pillager_now",
-                    "arbalistic"
-                ]
-            ],
-            [
-                "sleep_in_bed",
-                [
-                    "adventuring_time"
-                ]
-            ], 
-        ],
-        husbandry: [
-            [
-                "root",
-                [
-                    "safely_harvest_honey",
-                    "breed_an_animal",
-                    "tame_an_animal",
-                    "fishy_business",
-                    "silk_touch_nest",
-                    "plant_seed"
-                ]
-            ],
-            [
-                "breed_an_animal",
-                [
-                    "bred_all_animals"
-                ]
-            ],
-            [
-                "tame_an_animal",
-                [
-                    "complete_catalogue"
-                ]
-            ],
-            [
-                "fishy_business",
-                [
-                    "tactical_fishing"
-                ]
-            ],
-            [
-                "plant_seed",
-                [
-                    "balanced_diet",
-                    "obtain_netherite_hoe"
-                ]
-            ], 
-        ]
     };
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
     advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
