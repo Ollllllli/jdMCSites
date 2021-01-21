@@ -1,2 +1,3 @@
 @ECHO off
-START deno run --unstable -A build.ts
+deno run --unstable -A build.ts
+PAUSE>nul|set/p =Program exited (%ERRORLEVEL%) ...
