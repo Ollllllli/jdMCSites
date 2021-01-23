@@ -1257,67 +1257,98 @@ async function fetchJSON(url) {
     });
     return await res.json();
 }
-// allow for container styling?
+// map of namespaceId: [mergedModel, CSSRElement[]]
+const __mergedModelCache = new Map();
 class MCItemIcon extends HTMLElement {
     static get observedAttributes() {
         return [
             "model",
-            "enchanted"
+            "enchanted",
+            "res"
         ];
     }
     shadow = this.attachShadow({
         mode: "closed"
     });
     renderer = document.createElement("css-renderer");
+    innerStyle = document.createElement("style");
+    isUpdating = false;
     constructor(){
         super();
-        const style = document.createElement("style");
-        // font size can be set to be this inner height
-        style.textContent = `\n      css-renderer {font-size: 150px;}\n    `;
-        this.shadow.append(style, this.renderer);
+        this.shadow.append(this.innerStyle, this.renderer);
     }
     // need to cache merged model maybe for when update() is called
     async update() {
-        const models = [];
-        const thisModel = await this.getModel(this.getAttribute("model") || "minecraft:block/cube");
-        models.unshift(thisModel);
-        // load all parent models
-        while(models[0]["parent"]){
-            models.unshift(await this.getModel(models[0]["parent"]));
-        }
-        const mergedModel = {
-            elements: [],
-            textures: {
+        if (this.isUpdating) return;
+        this.isUpdating = true;
+        const res = parseFloat(this.getAttribute("res") || "20");
+        // font size can be set to be this inner height
+        this.innerStyle.textContent = `css-renderer{font-size:${res}px;}`;
+        if (__mergedModelCache.has(this.getAttribute("model") || "minecraft:block/cube")) {
+            this.renderer.rootOrigin.innerHTML = "";
+            const cachedModel = __mergedModelCache.get(this.getAttribute("model") || "minecraft:block/cube");
+            this.renderer.rootOrigin.append(...cachedModel[1]);
+            this.renderer.setAttribute("rotate", cachedModel[0].display["gui"].rotation.join(",") || "30,225,0");
+            this.renderer.setAttribute("scale", cachedModel[0].display["gui"].scale.join(",") || "1,1,1");
+            this.renderer.setAttribute("translate", cachedModel[0].display["gui"].translation.join(",") || "0,0,0");
+        } else {
+            const models = [];
+            const thisModel = await this.getModel(this.getAttribute("model") || "minecraft:block/cube");
+            models.unshift(thisModel);
+            // load all parent models
+            while(models[0]["parent"]){
+                models.unshift(await this.getModel(models[0]["parent"]));
             }
-        };
-        // merge models
-        for (const model of models){
-            if (model["display"]) mergedModel["display"] = model["display"];
-            if (model["elements"]) mergedModel["elements"] = model["elements"];
-            if (model["textures"]) Object.assign(mergedModel["textures"], model["textures"]);
-        }
-        // move render camera
-        this.renderer.setAttribute("rotate", mergedModel.display?.gui.rotation.join(",") || "30,225,0");
-        // preprocess texture variables
-        // iterate over until no more '#'s
-        for (const modelElement of mergedModel["elements"]){
-            let done = false;
-            while(!done){
-                done = true;
-                for (const face of Object.values(modelElement["faces"])){
-                    if (face?.texture.startsWith("#")) {
-                        done = false;
-                        face.texture = mergedModel["textures"][face.texture.slice(1)];
+            let mergedModel = {
+                elements: [],
+                textures: {
+                }
+            };
+            // merge models
+            for (const model of models){
+                if (model["display"]) mergedModel["display"] = model["display"];
+                if (model["elements"]) mergedModel["elements"] = model["elements"];
+                if (model["textures"]) Object.assign(mergedModel["textures"], model["textures"]);
+            }
+            // move render camera
+            this.renderer.setAttribute("rotate", mergedModel.display?.["gui"].rotation.join(",") || "30,225,0");
+            this.renderer.setAttribute("scale", mergedModel.display?.["gui"].scale.join(",") || "1,1,1");
+            this.renderer.setAttribute("translate", mergedModel.display?.["gui"].translation.join(",") || "0,0,0");
+            // preprocess texture variables
+            // iterate over until no more '#'s
+            for (const modelElement of mergedModel["elements"]){
+                let done = false;
+                while(!done){
+                    done = true;
+                    for (const face of Object.values(modelElement["faces"])){
+                        if (face?.texture.startsWith("#")) {
+                            done = false;
+                            face.texture = mergedModel["textures"][face.texture.slice(1)];
+                        }
                     }
                 }
             }
+            // go through each element, and add it to renderer
+            const cssrElements = [];
+            for (const modelElement of mergedModel["elements"]){
+                const ele = document.createElement("css-renderer-element");
+                ele.setAttribute("from", modelElement.from.join(","));
+                ele.setAttribute("to", modelElement.to.join(","));
+                if (modelElement.faces.north) ele.setAttribute("north", namespacedResource(currentResourcePack, "textures", modelElement.faces.north.texture, "png"));
+                if (modelElement.faces.south) ele.setAttribute("south", namespacedResource(currentResourcePack, "textures", modelElement.faces.south.texture, "png"));
+                if (modelElement.faces.east) ele.setAttribute("east", namespacedResource(currentResourcePack, "textures", modelElement.faces.east.texture, "png"));
+                if (modelElement.faces.west) ele.setAttribute("west", namespacedResource(currentResourcePack, "textures", modelElement.faces.west.texture, "png"));
+                if (modelElement.faces.up) ele.setAttribute("up", namespacedResource(currentResourcePack, "textures", modelElement.faces.up.texture, "png"));
+                if (modelElement.faces.down) ele.setAttribute("down", namespacedResource(currentResourcePack, "textures", modelElement.faces.down.texture, "png"));
+                cssrElements.push(ele);
+            }
+            __mergedModelCache.set(this.getAttribute("model") || "minecraft:block/cube", [
+                mergedModel,
+                cssrElements
+            ]);
+            this.renderer.rootOrigin.append(...cssrElements);
         }
-        this.renderer.rootOrigin.innerHTML = "";
-        // go through each element, and add it to renderer
-        console.log(mergedModel["elements"]);
-        for (const modelElement of mergedModel["elements"]){
-            this.renderer.rootOrigin.insertAdjacentHTML("beforeend", `<css-renderer-element\n        from="${modelElement.from.join(",")}"\n        to="${modelElement.to.join(",")}"\n        north="${modelElement.faces.north?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.north.texture, "png") : ""}"\n        south="${modelElement.faces.south?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.south.texture, "png") : ""}"\n        east="${modelElement.faces.east?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.east.texture, "png") : ""}"\n        west="${modelElement.faces.west?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.west.texture, "png") : ""}"\n        up="${modelElement.faces.up?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.up.texture, "png") : ""}"\n        down="${modelElement.faces.down?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.down.texture, "png") : ""}"\n       ></css-renderer-element>`);
-        }
+        this.isUpdating = false;
     }
     async getModel(namespacedId) {
         const modelFilename = namespacedResource(currentResourcePack, "models", namespacedId, "json");

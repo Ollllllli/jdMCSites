@@ -4,49 +4,93 @@
 
 const theMissingTexture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/gPhBDwn+E/ABvyA/1Bas9NAAAAAElFTkSuQmCC";
 
+async function urlExists(url: string) : Promise<boolean>{
+  console.log("urlTest", url)
+  try {
+    const res = await fetch(url, {method: "HEAD"});
+    return res.status == 200;
+  } catch (e) {
+    return false;
+  }
+}
+
 // TODO: do shading with a sun vector.
 class CSSRPlane extends HTMLElement {
 
-  static get observedAttributes() { return ["w","h","x","y","z","bg","face"] }
+  static get observedAttributes() { return ["w","h","x","y","z","bg","face"] as const }
+  private attrValues: Record<typeof CSSRPlane["observedAttributes"][number], string> = {} as any;
 
-  connectedCallback() { this.update() }
-  attributeChangedCallback() { this.update() }
-
-  update() {
-    const w = `calc(var(--unit) * ${parseFloat(this.getAttribute("w") || "1")})`;
-    const h = `calc(var(--unit) * ${parseFloat(this.getAttribute("h") || "1")})`;
-    const x = `calc(var(--unit) * ${parseFloat(this.getAttribute("x") || "0")})`;
-    const y = `calc(var(--unit) * ${-parseFloat(this.getAttribute("y") || "0")})`;
-    const z = `calc(var(--unit) * ${parseFloat(this.getAttribute("z") || "0")})`;
-    const bg = this.getAttribute("bg") || theMissingTexture;
-    const face: "north" | "south" | "east" | "west" | "up" | "down" = this.getAttribute("face") as any || "north";
-
+  connectedCallback() {
     this.style.display = "inline-block";
-    this.style.width = w;
-    this.style.height = h;
-    this.style.backgroundImage = `url(${bg})`;
     this.style.backgroundSize = "cover";
-    this.style.transform = `translate3d(${x},${y},${z})`;
     this.style.transformOrigin = "0% 100%";
     this.style.bottom = "0";
-    switch (face) {
-      case "north":
-        this.style.transform += "rotateY(-180deg)";
+  }
+  attributeChangedCallback(name: typeof CSSRPlane["observedAttributes"][number]) { this.update(name) }
+
+  update(attr: typeof CSSRPlane["observedAttributes"][number]) {
+    switch (attr) {
+      case "w":
+        this.attrValues.w = `calc(var(--unit) * ${parseFloat(this.getAttribute("w") || "1")})`;
+        this.style.width = this.attrValues.w;
         break;
-      case "east":
-        this.style.transform += "rotateY(90deg)";
+      case "h":
+        this.attrValues.h = `calc(var(--unit) * ${parseFloat(this.getAttribute("h") || "1")})`;
+        this.style.height = this.attrValues.h;
         break;
-      case "south":
+      case "x":
+        this.attrValues.x = `calc(var(--unit) * ${parseFloat(this.getAttribute("x") || "0")})`;
         break;
-      case "west":
-        this.style.transform += "rotateY(-90deg)";
+      case "y":
+        this.attrValues.y = `calc(var(--unit) * ${-parseFloat(this.getAttribute("y") || "0")})`;
         break;
-      case "up":
-        this.style.transform += "rotateY(-180deg) rotateX(90deg)";
+      case "z":
+        this.attrValues.z = `calc(var(--unit) * ${parseFloat(this.getAttribute("z") || "0")})`;
         break;
-      case "down":
-        this.style.transform += "rotateY(-180deg) rotateX(-90deg)";
+      case "bg":
+        this.attrValues.bg = this.getAttribute("bg") || theMissingTexture;
+        if (this.attrValues.bg == theMissingTexture) {
+          this.style.backgroundImage = `url(${theMissingTexture})`;
+        }
+        else {
+          urlExists(this.attrValues.bg).then(v=>{
+            if (v) this.style.backgroundImage = `url(${this.getAttribute("bg")})`;
+            else this.style.backgroundImage = `url(${theMissingTexture})`;
+          });
+        }
+        
         break;
+      case "face":
+        this.attrValues.face = this.getAttribute("face") as any || "north";
+        break;
+    }
+    switch (attr) {
+      case "x":
+      case "y":
+      case "z":
+      case "face": {
+        this.style.transform = `translate3d(${this.attrValues.x},${this.attrValues.y},${this.attrValues.z})`;
+        switch (this.attrValues.face) {
+          case "north":
+            this.style.transform += "rotateY(-180deg)";
+            break;
+          case "east":
+            this.style.transform += "rotateY(90deg)";
+            break;
+          case "south":
+            break;
+          case "west":
+            this.style.transform += "rotateY(-90deg)";
+            break;
+          case "up":
+            this.style.transform += "rotateY(-180deg) rotateX(90deg)";
+            break;
+          case "down":
+            this.style.transform += "rotateY(-180deg) rotateX(-90deg)";
+            break;
+        }
+      }
+      break;
     }
   }
 }
@@ -69,43 +113,75 @@ class CSSRElement extends HTMLElement {
   // each face only drawn
   //
   // takes a lower coord, and upper coord
-  private cssrElementOrigin = document.createElement("css-renderer-origin");
-  static get observedAttributes() { return ["from","to","north","south","east","west","up","down","noshade"] }
+  private cssrElementOrigin = document.createElement("css-renderer-origin")  as CSSROrigin;
+  private northFace?: CSSRPlane;
+  private southFace?: CSSRPlane;
+  private eastFace?: CSSRPlane;
+  private westFace?: CSSRPlane;
+  private upFace?: CSSRPlane;
+  private downFace?: CSSRPlane;
+  private attrValues: Record<typeof CSSRElement["observedAttributes"][number], any> = {} as any;
+  static get observedAttributes() { return ["from","to","north","south","east","west","up","down","noshade"] as const }
   constructor() {
     super();
+    this.attrValues.to = [16,16,16];
+    this.attrValues.from = [0,0,0];
   }
   connectedCallback() {
     this.append(this.cssrElementOrigin);
-    this.update();
   }
-  attributeChangedCallback() { this.update() }
-  update() {
-    const from = this.getAttribute("from")?.split(",").map(parseFloat) || [0,0,0];
-    const to = this.getAttribute("to")?.split(",").map(parseFloat) || [16,16,16];
-    const northBg = this.getAttribute("north") || "";
-    const eastBg = this.getAttribute("east") || "";
-    const southBg = this.getAttribute("south") || "";
-    const westBg = this.getAttribute("west") || "";
-    const upBg = this.getAttribute("up") || "";
-    const downBg = this.getAttribute("down") || "";
-    const noShade = this.hasAttribute("noshade");
+  attributeChangedCallback(name: typeof CSSRElement["observedAttributes"][number]) { this.update(name) }
+  update(attr: typeof CSSRElement["observedAttributes"][number]) {
+    switch(attr) {
+      case "from":
+        this.attrValues.from = (this.getAttribute("from") || "0,0,0").split(",").map(parseFloat);
+        break;
+      case "to":
+        this.attrValues.to = (this.getAttribute("to") || "16,16,16").split(",").map(parseFloat);
+        break;
+      case "north":
+      case "south":
+      case "east":
+      case "west":
+      case "up":
+      case "down":
+        if (!(this as any)[attr+"Face"]) {
+          (this as any)[attr+"Face"] = document.createElement("css-renderer-plane") as CSSRPlane;
+          this.cssrElementOrigin.append((this as any)[attr+"Face"]);
+          (this as any)[attr+"Face"].setAttribute("face", attr);
+        }
+        this.attrValues[attr] = this.getAttribute(attr) || "";
+        (this as any)[attr+"Face"].setAttribute("bg", this.attrValues[attr]);
+        break;
+      case "noshade":
+        this.attrValues.noshade = this.hasAttribute("noshade");
+        break;
+    }
     // used for shifting for element rotation origin, aswell as general positioning
-    this.cssrElementOrigin.setAttribute("x", String(from[0]));
-    this.cssrElementOrigin.setAttribute("y", String(from[1]));
-    this.cssrElementOrigin.setAttribute("z", String(from[2]));
-    this.cssrElementOrigin.innerHTML = "";
-    if (to[0] - from[0] > 0 && to[1] - from[1] > 0) {
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0]-from[0]}" h="${to[1]-from[1]}" bg="${northBg}" x="16" face="north"></css-renderer-plane>`);
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0]-from[0]}" h="${to[1]-from[1]}" bg="${southBg}" z="16" face="south"></css-renderer-plane>`);
-    }
-    if (to[2] - from[2] > 0 && to[1] - from[1] > 0) {
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[2]-from[2]}" h="${to[1]-from[1]}" bg="${eastBg}" x="16" z="16" face="east"></css-renderer-plane>`);
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[2]-from[2]}" h="${to[1]-from[1]}" bg="${westBg}" face="west"></css-renderer-plane>`);
-    }
-    if (to[0] - from[0] > 0 && to[2] - from[2] > 0) {
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0]-from[0]}" h="${to[2]-from[2]}" bg="${upBg}" x="16" y="16" face="up"></css-renderer-plane>`);
-      this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0]-from[0]}" h="${to[2]-from[2]}" bg="${downBg}" x="16" z="16" face="down"></css-renderer-plane>`);
-    }
+    // this.cssrElementOrigin.setAttribute("x", String(from[0]));
+    // this.cssrElementOrigin.setAttribute("y", String(from[1]));
+    // this.cssrElementOrigin.setAttribute("z", String(from[2]));
+    this.northFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.northFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.northFace?.setAttribute("x", String(this.attrValues.to[0]));
+    this.southFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.southFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.southFace?.setAttribute("z", String(this.attrValues.to[2]));
+    this.eastFace?.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.eastFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.eastFace?.setAttribute("x", String(this.attrValues.to[0]));
+    this.eastFace?.setAttribute("z", String(this.attrValues.to[2]));
+    this.westFace?.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.westFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.westFace?.setAttribute("z", String(this.attrValues.to[2]));
+    this.upFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.upFace?.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.upFace?.setAttribute("x", String(this.attrValues.to[0]));
+    this.upFace?.setAttribute("z", String(this.attrValues.to[2]));
+    this.downFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.downFace?.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.downFace?.setAttribute("x", String(this.attrValues.to[0]));
+    this.downFace?.setAttribute("z", String(this.attrValues.to[2]));
   }
 }
 
@@ -117,7 +193,7 @@ class CSSRenderer extends HTMLElement {
   private wrapper = document.createElement("css-renderer-wrapper");
   rootOrigin = document.createElement("css-renderer-origin") as CSSROrigin;
 
-  static get observedAttributes() { return ["width", "height", "rotate"] }
+  static get observedAttributes() { return ["width", "height", "rotate", "scale", "translate"] }
 
   constructor() {
     super();
@@ -136,7 +212,9 @@ class CSSRenderer extends HTMLElement {
     const width = parseFloat(this.getAttribute("width") || fontSize);
     const height = parseFloat(this.getAttribute("height") || fontSize);
     const rotateComponents = this.getAttribute("rotate")?.split(",").map(v=>parseFloat(v)) || [0, 0, 0];
-    const unit = (Math.min(width, height) / 25.2).toFixed(3);
+    const scaleComponents = this.getAttribute("scale")?.split(",").map(v=>parseFloat(v)) || [0, 0, 0];
+    const translateComponents = this.getAttribute("translate")?.split(",").map(v=>parseFloat(v)) || [0, 0, 0];
+    const unit = (Math.min(width, height) / 15.75).toFixed(3);
     // set self styling
     this.style.display = "inline-block";
     this.style.verticalAlign = "top";
@@ -152,7 +230,17 @@ class CSSRenderer extends HTMLElement {
         position: absolute;
         top: 50%; left: 50%;
         width: 0; height: 0;
-        transform: rotateX(${-1*rotateComponents[0]}deg) rotateY(${-1*rotateComponents[1]}deg)  rotateZ(${-1*rotateComponents[2]}deg);
+        transform:
+          scaleX(${scaleComponents[0]})
+          scaleY(${scaleComponents[1]})
+          scaleZ(${scaleComponents[2]})
+          rotateX(${-1*rotateComponents[0]}deg)
+          rotateY(${-1*rotateComponents[1]}deg)
+          rotateZ(${-1*rotateComponents[2]}deg)
+          translateX(calc(var(--unit)*${translateComponents[0]}))
+          translateY(calc(var(--unit)*${-translateComponents[1]}))
+          translateZ(calc(var(--unit)*${translateComponents[2]}))
+          ;
         transform-style: preserve-3d;
       }
       css-renderer-plane {

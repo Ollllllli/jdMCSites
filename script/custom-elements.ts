@@ -363,94 +363,118 @@ async function fetchJSON(url: string) {
   return await res.json();
 }
 
-// allow for container styling?
+// map of namespaceId: [mergedModel, CSSRElement[]]
+const __mergedModelCache = new Map<string, [any,CSSRElement[]]>();
+
 class MCItemIcon extends HTMLElement {
 
   static get observedAttributes() {
-    return ["model", "enchanted"] as const;
+    return ["model", "enchanted", "res"] as const;
   }
 
   private shadow: ShadowRoot
     = this.attachShadow({mode: "closed"});
   private renderer: CSSRenderer
     = document.createElement("css-renderer") as CSSRenderer;
+  private innerStyle: HTMLStyleElement
+    = document.createElement("style")
+  private isUpdating = false;
 
   constructor() {
     super();
-    const style = document.createElement("style");
-    // font size can be set to be this inner height
-    style.textContent = `
-      css-renderer {font-size: 150px;}
-    `;
-    this.shadow.append(style, this.renderer);
+    this.shadow.append(this.innerStyle, this.renderer);
   }
 
   // need to cache merged model maybe for when update() is called
   private async update() {
-    const models = [];
-    const thisModel = await this.getModel(this.getAttribute("model") || "minecraft:block/cube");
-    models.unshift(thisModel);
-    // load all parent models
-    while (models[0]["parent"]) {
-      models.unshift(await this.getModel(models[0]["parent"]));
-    }
-    const mergedModel: {
-      display?: {
-        gui: {
-          rotation: [number,number,number]
-        }
-      },
-      elements: Array<{
-        from: [number,number,number],
-        to: [number,number,number],
-        faces: {
-          [face in "north" | "south" | "east" | "west" | "up" | "down"]?: { texture: string, uv?: [number,number,number,number]}
-        }
-      }>,
-      textures: { [key: string]: string }
-    } = {
-      elements: [],
-      textures: {},
-    };
-    // merge models
-    for (const model of models) {
-      if (model["display"]) mergedModel["display"] = model["display"];
-      if (model["elements"]) mergedModel["elements"] = model["elements"];
-      if (model["textures"]) Object.assign(mergedModel["textures"], model["textures"]);
-    }
-    // move render camera
-    this.renderer.setAttribute("rotate", mergedModel.display?.gui.rotation.join(",") || "30,225,0");
-    // preprocess texture variables
-    // iterate over until no more '#'s
-    for (const modelElement of mergedModel["elements"]) {
-      let done = false;
-      while (!done) {
-        done = true;
-        for (const face of Object.values(modelElement["faces"])) {
-          if (face?.texture.startsWith("#")) {
-            done = false;
-            face.texture = mergedModel["textures"][face.texture.slice(1)];
+    if (this.isUpdating) return;
+    this.isUpdating = true;
+    const res = parseFloat(this.getAttribute("res") || "20");
+    // font size can be set to be this inner height
+    this.innerStyle.textContent = `css-renderer{font-size:${res}px;}`;
+    if (__mergedModelCache.has(this.getAttribute("model") || "minecraft:block/cube")) {
+      this.renderer.rootOrigin.innerHTML = "";
+      const cachedModel = __mergedModelCache.get(this.getAttribute("model") || "minecraft:block/cube")!;
+      this.renderer.rootOrigin.append(...cachedModel[1]);
+      this.renderer.setAttribute("rotate", cachedModel[0].display["gui"].rotation.join(",") || "30,225,0");
+      this.renderer.setAttribute("scale", cachedModel[0].display["gui"].scale.join(",") || "1,1,1");
+      this.renderer.setAttribute("translate", cachedModel[0].display["gui"].translation.join(",") || "0,0,0");
+    } else {
+      const models = [];
+      const thisModel = await this.getModel(this.getAttribute("model") || "minecraft:block/cube");
+      models.unshift(thisModel);
+      // load all parent models
+      while (models[0]["parent"]) {
+        models.unshift(await this.getModel(models[0]["parent"]));
+      }
+      let mergedModel: {
+        display?: {
+          gui: {
+            rotation: [number,number,number],
+            translation: [number,number,number],
+            scale: [number,number,number]
+          }
+        },
+        elements: Array<{
+          from: [number,number,number],
+          to: [number,number,number],
+          faces: {
+            [face in "north" | "south" | "east" | "west" | "up" | "down"]?: { texture: string, uv?: [number,number,number,number]}
+          }
+        }>,
+        textures: { [key: string]: string }
+      } = {
+        elements: [],
+        textures: {},
+      };
+      // merge models
+      for (const model of models) {
+        if (model["display"]) mergedModel["display"] = model["display"];
+        if (model["elements"]) mergedModel["elements"] = model["elements"];
+        if (model["textures"]) Object.assign(mergedModel["textures"], model["textures"]);
+      }
+      // move render camera
+      this.renderer.setAttribute("rotate", mergedModel.display?.["gui"].rotation.join(",") || "30,225,0");
+      this.renderer.setAttribute("scale", mergedModel.display?.["gui"].scale.join(",") || "1,1,1");
+      this.renderer.setAttribute("translate", mergedModel.display?.["gui"].translation.join(",") || "0,0,0");
+      // preprocess texture variables
+      // iterate over until no more '#'s
+      for (const modelElement of mergedModel["elements"]) {
+        let done = false;
+        while (!done) {
+          done = true;
+          for (const face of Object.values(modelElement["faces"])) {
+            if (face?.texture.startsWith("#")) {
+              done = false;
+              face.texture = mergedModel["textures"][face.texture.slice(1)];
+            }
           }
         }
       }
+      // go through each element, and add it to renderer
+      const cssrElements: CSSRElement[] = [];
+      for (const modelElement of mergedModel["elements"]) {
+        const ele = document.createElement("css-renderer-element") as CSSRElement;
+        ele.setAttribute("from", modelElement.from.join(","));
+        ele.setAttribute("to", modelElement.to.join(","));
+        if (modelElement.faces.north)
+          ele.setAttribute("north", namespacedResource(currentResourcePack, "textures", modelElement.faces.north.texture, "png"));
+        if (modelElement.faces.south)
+          ele.setAttribute("south", namespacedResource(currentResourcePack, "textures", modelElement.faces.south.texture, "png"));
+        if (modelElement.faces.east)
+          ele.setAttribute("east", namespacedResource(currentResourcePack, "textures", modelElement.faces.east.texture, "png"));
+        if (modelElement.faces.west)
+          ele.setAttribute("west", namespacedResource(currentResourcePack, "textures", modelElement.faces.west.texture, "png"));
+        if (modelElement.faces.up)
+          ele.setAttribute("up", namespacedResource(currentResourcePack, "textures", modelElement.faces.up.texture, "png"));
+        if (modelElement.faces.down)
+          ele.setAttribute("down", namespacedResource(currentResourcePack, "textures", modelElement.faces.down.texture, "png"));
+        cssrElements.push(ele);
+      }
+      __mergedModelCache.set(this.getAttribute("model") || "minecraft:block/cube", [mergedModel, cssrElements]);
+      this.renderer.rootOrigin.append(...cssrElements);
     }
-    this.renderer.rootOrigin.innerHTML = "";
-    // go through each element, and add it to renderer
-    console.log(mergedModel["elements"]);
-    for (const modelElement of mergedModel["elements"]) {
-      this.renderer.rootOrigin.insertAdjacentHTML("beforeend",
-      `<css-renderer-element
-        from="${modelElement.from.join(",")}"
-        to="${modelElement.to.join(",")}"
-        north="${modelElement.faces.north?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.north.texture, "png") : ""}"
-        south="${modelElement.faces.south?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.south.texture, "png") : ""}"
-        east="${modelElement.faces.east?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.east.texture, "png") : ""}"
-        west="${modelElement.faces.west?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.west.texture, "png") : ""}"
-        up="${modelElement.faces.up?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.up.texture, "png") : ""}"
-        down="${modelElement.faces.down?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.down.texture, "png") : ""}"
-       ></css-renderer-element>`
-      );
-    }
+    this.isUpdating = false;
   }
 
   private async getModel(namespacedId: string) {
