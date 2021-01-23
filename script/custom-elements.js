@@ -1242,135 +1242,94 @@ class MCAdvancementView extends HTMLElement {
     advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
     svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
 }
-const imageDir = document.currentScript.src + "/../../img/";
-const blocksConfigPromise = fetch(`${imageDir}block/blocks.json`).then((v)=>{
-    return v.json();
-});
-const itemIconTypes = [
-    "block",
-    "item",
-    "none"
-];
-const itemTextureCache = new Map();
+const webRoot = `${document.currentScript.src}/../../`;
+const currentResourcePack = "vanilla";
+function namespacedResource(pack, section, namespacedId, extension) {
+    const namespaceSplit = namespacedId.includes(":") ? namespacedId.split(":") : [
+        "minecraft",
+        namespacedId
+    ];
+    return `${webRoot}resourcepacks/${pack}/assets/${namespaceSplit[0]}/${section}/${namespaceSplit[1]}.${extension}`;
+}
+async function fetchJSON(url) {
+    const res = await fetch(url, {
+        cache: "force-cache"
+    });
+    return await res.json();
+}
+// allow for container styling?
 class MCItemIcon extends HTMLElement {
     static get observedAttributes() {
         return [
-            "name",
-            "type",
-            "enchanted",
-            "res"
+            "model",
+            "enchanted"
         ];
     }
     shadow = this.attachShadow({
         mode: "closed"
     });
-    renderer = null;
-    itemCanvas = document.createElement("canvas");
-    itemCanvasContext = this.itemCanvas.getContext("2d");
-    itemType = "none";
-    itemName = "";
-    itemIsEnchanted = false;
-    itemRes = 48;
+    renderer = document.createElement("css-renderer");
     constructor(){
         super();
         const style = document.createElement("style");
-        style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
-        this.shadow.append(style, this.itemCanvas);
+        // font size can be set to be this inner height
+        style.textContent = `\n      css-renderer {font-size: 150px;}\n    `;
+        this.shadow.append(style, this.renderer);
     }
-    async drawCanvas(itemType, itemName) {
-        const blocksConfig = await blocksConfigPromise;
-        if (itemType == "block") {
-            const faces = blocksConfig["block"][itemName] ?? [];
-            const loadTexturesPromise = [];
-            // load textures
-            for (const [_, textureName] of faces){
-                if (!itemTextureCache.has(textureName)) {
-                    if (itemTextureCache.get(textureName) instanceof Promise) continue;
-                    const textureDataPromise = loadTexture(`${imageDir}block/${textureName}.png`);
-                    itemTextureCache.set(textureName, textureDataPromise);
+    // need to cache merged model maybe for when update() is called
+    async update() {
+        const models = [];
+        const thisModel = await this.getModel(this.getAttribute("model") || "minecraft:block/cube");
+        models.unshift(thisModel);
+        // load all parent models
+        while(models[0]["parent"]){
+            models.unshift(await this.getModel(models[0]["parent"]));
+        }
+        const mergedModel = {
+            elements: [],
+            textures: {
+            }
+        };
+        // merge models
+        for (const model of models){
+            if (model["display"]) mergedModel["display"] = model["display"];
+            if (model["elements"]) mergedModel["elements"] = model["elements"];
+            if (model["textures"]) Object.assign(mergedModel["textures"], model["textures"]);
+        }
+        // move render camera
+        this.renderer.setAttribute("rotate", mergedModel.display?.gui.rotation.join(",") || "30,225,0");
+        // preprocess texture variables
+        // iterate over until no more '#'s
+        for (const modelElement of mergedModel["elements"]){
+            let done = false;
+            while(!done){
+                done = true;
+                for (const face of Object.values(modelElement["faces"])){
+                    if (face?.texture.startsWith("#")) {
+                        done = false;
+                        face.texture = mergedModel["textures"][face.texture.slice(1)];
+                    }
                 }
-                const texturePromise = itemTextureCache.get(textureName);
-                loadTexturesPromise.push(texturePromise);
             }
-            await Promise.all(loadTexturesPromise);
-            // draw faces
-            for (const [modelName, textureName] of faces){
-                // load texture from cache
-                const faceTexture = await itemTextureCache.get(textureName);
-                let textureFilter = undefined;
-                if (modelName == "left") textureFilter = {
-                    brightness: 0.8
-                };
-                else if (modelName == "right") textureFilter = {
-                    brightness: 0.6
-                };
-                this.renderer.renderQuad(this.itemCanvasContext, {
-                    topLeft: blocksConfig["model"][modelName][0],
-                    topRight: blocksConfig["model"][modelName][3],
-                    bottomLeft: blocksConfig["model"][modelName][1],
-                    bottomRight: blocksConfig["model"][modelName][2]
-                }, faceTexture, textureFilter);
-            }
-        } else if (itemType == "item") {
-            const itemTexturePath = `${imageDir}item/${itemName}.png`;
-            if (!itemTextureCache.has(itemTexturePath)) {
-                const itemTexturePromise = loadTexture(itemTexturePath);
-                itemTextureCache.set(itemTexturePath, itemTexturePromise);
-                console.log(itemTexturePath, await itemTexturePromise);
-            }
-            const itemTexture = await itemTextureCache.get(itemTexturePath);
-            this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"][0],
-                topRight: blocksConfig["model"]["flat"][3],
-                bottomLeft: blocksConfig["model"]["flat"][1],
-                bottomRight: blocksConfig["model"]["flat"][2]
-            }, itemTexture);
-        } else {
-            if (!itemTextureCache.has("@MISSING@")) {
-                const itemTexturePromise = loadTexture(null);
-                itemTextureCache.set("@MISSING@", itemTexturePromise);
-            }
-            const itemTexture = await itemTextureCache.get("@MISSING@");
-            this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"][0],
-                topRight: blocksConfig["model"]["flat"][3],
-                bottomLeft: blocksConfig["model"]["flat"][1],
-                bottomRight: blocksConfig["model"]["flat"][2]
-            }, itemTexture);
+        }
+        this.renderer.rootOrigin.innerHTML = "";
+        // go through each element, and add it to renderer
+        console.log(mergedModel["elements"]);
+        for (const modelElement of mergedModel["elements"]){
+            this.renderer.rootOrigin.insertAdjacentHTML("beforeend", `<css-renderer-element\n        from="${modelElement.from.join(",")}"\n        to="${modelElement.to.join(",")}"\n        north="${modelElement.faces.north?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.north.texture, "png") : ""}"\n        south="${modelElement.faces.south?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.south.texture, "png") : ""}"\n        east="${modelElement.faces.east?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.east.texture, "png") : ""}"\n        west="${modelElement.faces.west?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.west.texture, "png") : ""}"\n        up="${modelElement.faces.up?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.up.texture, "png") : ""}"\n        down="${modelElement.faces.down?.texture ? namespacedResource(currentResourcePack, "textures", modelElement.faces.down.texture, "png") : ""}"\n       ></css-renderer-element>`);
         }
     }
-    updateProperty(key) {
-        let value;
-        switch(key){
-            case "type":
-                value = this.getAttribute("type");
-                if (itemIconTypes.includes(value)) this.itemType = value;
-                break;
-            case "name":
-                this.itemName = this.getAttribute("name") ?? "";
-                break;
-            case "enchanted":
-                this.itemIsEnchanted = this.hasAttribute("enchanted");
-                break;
-            case "res":
-                value = this.getAttribute("res");
-                value > 0 ? this.itemRes = value : 0;
-                break;
-        }
+    async getModel(namespacedId) {
+        const modelFilename = namespacedResource(currentResourcePack, "models", namespacedId, "json");
+        return await fetchJSON(modelFilename);
     }
     connectedCallback() {
-        this.updateProperty("name");
-        this.updateProperty("type");
-        this.updateProperty("res");
-        this.updateProperty("enchanted");
-        this.itemCanvas.width = this.itemRes;
-        this.itemCanvas.height = this.itemRes;
-        this.renderer = new Renderer(this.itemCanvas.width, this.itemCanvas.height);
-        this.drawCanvas(this.itemType, this.itemName);
+        this.update();
+    }
+    attributeChangedCallback() {
+        this.update();
     }
 }
-// new MCItemIcon({ type: "block", name: "cobblestone" });
-document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);

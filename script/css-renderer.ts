@@ -69,7 +69,7 @@ class CSSRElement extends HTMLElement {
   // each face only drawn
   //
   // takes a lower coord, and upper coord
-  cssrElementOrigin = document.createElement("css-renderer-origin");
+  private cssrElementOrigin = document.createElement("css-renderer-origin");
   static get observedAttributes() { return ["from","to","north","south","east","west","up","down","noshade"] }
   constructor() {
     super();
@@ -115,9 +115,9 @@ class CSSRenderer extends HTMLElement {
   shadowRoot = this.attachShadow({mode:"closed"});
   private internalStyle = document.createElement("style");
   private wrapper = document.createElement("css-renderer-wrapper");
-  rootOrigin = document.createElement("css-renderer-origin");
+  rootOrigin = document.createElement("css-renderer-origin") as CSSROrigin;
 
-  static get observedAttributes() { return ["width", "height", "model"] }
+  static get observedAttributes() { return ["width", "height", "rotate"] }
 
   constructor() {
     super();
@@ -135,6 +135,7 @@ class CSSRenderer extends HTMLElement {
     const fontSize = window.getComputedStyle(this).fontSize;
     const width = parseFloat(this.getAttribute("width") || fontSize);
     const height = parseFloat(this.getAttribute("height") || fontSize);
+    const rotateComponents = this.getAttribute("rotate")?.split(",").map(v=>parseFloat(v)) || [0, 0, 0];
     const unit = (Math.min(width, height) / 25.2).toFixed(3);
     // set self styling
     this.style.display = "inline-block";
@@ -151,7 +152,7 @@ class CSSRenderer extends HTMLElement {
         position: absolute;
         top: 50%; left: 50%;
         width: 0; height: 0;
-        transform: rotateX(${-1*30}deg) rotateY(${-1*225}deg);
+        transform: rotateX(${-1*rotateComponents[0]}deg) rotateY(${-1*rotateComponents[1]}deg)  rotateZ(${-1*rotateComponents[2]}deg);
         transform-style: preserve-3d;
       }
       css-renderer-plane {

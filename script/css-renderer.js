@@ -141,9 +141,9 @@ class CSSRElement extends HTMLElement {
             this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[2] - from[2]}" h="${to[1] - from[1]}" bg="${westBg}" face="west"></css-renderer-plane>`);
         }
         if (to[0] - from[0] > 0 && to[2] - from[2] > 0) {
+            this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0] - from[0]}" h="${to[2] - from[2]}" bg="${upBg}" x="16" y="16" face="up"></css-renderer-plane>`);
+            this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0] - from[0]}" h="${to[2] - from[2]}" bg="${downBg}" x="16" z="16" face="down"></css-renderer-plane>`);
         }
-        this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0] - from[0]}" h="${to[2] - from[2]}" bg="${upBg}" x="16" y="16" face="up"></css-renderer-plane>`);
-        if (to[0] - from[0] > 0 && to[2] - from[2] > 0) this.cssrElementOrigin.insertAdjacentHTML("beforeend", `<css-renderer-plane w="${to[0] - from[0]}" h="${to[2] - from[2]}" bg="${downBg}" x="16" z="16" face="down"></css-renderer-plane>`);
     }
 }
 // show as minecraft models display = gui
@@ -157,7 +157,8 @@ class CSSRenderer extends HTMLElement {
     static get observedAttributes() {
         return [
             "width",
-            "height"
+            "height",
+            "rotate"
         ];
     }
     constructor(){
@@ -165,8 +166,6 @@ class CSSRenderer extends HTMLElement {
         this.rootOrigin.setAttribute("x", "-8");
         this.rootOrigin.setAttribute("y", "-8");
         this.rootOrigin.setAttribute("z", "-8");
-        const block = document.createElement("css-renderer-element");
-        this.rootOrigin.append(block);
         this.wrapper.append(this.rootOrigin);
         this.shadowRoot.append(this.internalStyle, this.wrapper);
     }
@@ -180,6 +179,12 @@ class CSSRenderer extends HTMLElement {
         const fontSize = window.getComputedStyle(this).fontSize;
         const width = parseFloat(this.getAttribute("width") || fontSize);
         const height = parseFloat(this.getAttribute("height") || fontSize);
+        const rotateComponents = this.getAttribute("rotate")?.split(",").map((v)=>parseFloat(v)
+        ) || [
+            0,
+            0,
+            0
+        ];
         const unit = (Math.min(width, height) / 25.2).toFixed(3);
         // set self styling
         this.style.display = "inline-block";
@@ -187,8 +192,7 @@ class CSSRenderer extends HTMLElement {
         this.style.position = "relative";
         this.style.width = `${width}px`;
         this.style.height = `${height}px`;
-        this.style.backgroundColor = "gold";
-        this.internalStyle.textContent = `\n      css-renderer-wrapper * { transform-style: preserve-3d; position: absolute; }\n\n      /* used to rotate whole model around centre, and to hold unit variable */\n      css-renderer-wrapper {\n        --unit: ${unit}px;\n        position: absolute;\n        top: 50%; left: 50%;\n        width: 0; height: 0;\n        transform: rotateX(${-1 * 30}deg) rotateY(${-1 * 225}deg);\n        transform-style: preserve-3d;\n      }\n      css-renderer-plane {\n        image-rendering: -moz-crisp-edges;\n        image-rendering: -webkit-crisp-edges;\n        image-rendering: pixelated;\n        image-rendering: crisp-edges;\n        backface-visibility: hidden;\n      }\n    `;
+        this.internalStyle.textContent = `\n      css-renderer-wrapper * { transform-style: preserve-3d; position: absolute; }\n\n      /* used to rotate whole model around centre, and to hold unit variable */\n      css-renderer-wrapper {\n        --unit: ${unit}px;\n        position: absolute;\n        top: 50%; left: 50%;\n        width: 0; height: 0;\n        transform: rotateX(${-1 * rotateComponents[0]}deg) rotateY(${-1 * rotateComponents[1]}deg)  rotateZ(${-1 * rotateComponents[2]}deg);\n        transform-style: preserve-3d;\n      }\n      css-renderer-plane {\n        image-rendering: -moz-crisp-edges;\n        image-rendering: -webkit-crisp-edges;\n        image-rendering: pixelated;\n        image-rendering: crisp-edges;\n        backface-visibility: hidden;\n      }\n    `;
     }
 }
 customElements.define("css-renderer", CSSRenderer);
