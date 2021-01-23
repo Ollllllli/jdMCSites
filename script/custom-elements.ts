@@ -16,6 +16,24 @@ function generateSelect(keyValue: [optionValue: string, optionLabel: string][]) 
   }
 }
 
+// abstract class BaseCustomElement<ObserveAttrs extends Record<string,(value:any)=>unknown>> extends HTMLElement
+// {
+//   attrs = new Map<keyof ObserveAttrs, ReturnType<ObserveAttrs[keyof ObserveAttrs]>>();
+//   constructor(private attrsToObserve: ObserveAttrs) {
+//     super();
+//     this.attachShadow({mode: 'closed'});
+//     Object.defineProperty(this.constructor, "observedAttributes", {get:()=>Object.keys(this.attrsToObserve)});
+//   }
+//   private updateAttributes() {
+//     for (const attrKey in this.attrsToObserve) {
+//       this.attrs.set(attrKey, this.attrsToObserve[attrKey](this.getAttribute(attrKey)) as any);
+//     }
+//   }
+//   async ready() {}
+//   connectedCallback() { this.updateAttributes(); this.ready(); }
+//   attributeChangedCallback() { this.updateAttributes() }
+// }
+
 type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: ["item"|"block", string, "enchanted"?] } }
 
 class MCAdvancement extends HTMLElement {
@@ -339,6 +357,19 @@ interface MCItemIconOptions {
 }
 
 const imageDir = (document.currentScript as HTMLScriptElement).src+"/../../img/";
+const selectedResourcePack = "vanilla"
+
+const resourcePack = {
+  selected: "vanilla",
+  root: (namespace="minecraft")=>`${(document.currentScript as HTMLScriptElement).src}/../../resourcepacks/${resourcePack.selected}/assets/${namespace}/`,
+  models: ()=>`${resourcePack.root}models/`,
+  textures: ()=>`${resourcePack.root}textures/`,
+};
+
+async function fetchJSON(url: string) {
+  const res = await fetch(url);
+  return await res.json();
+}
 
 interface BlocksConfig {
   model: {
