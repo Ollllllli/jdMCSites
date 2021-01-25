@@ -39,7 +39,7 @@ body {
   width: 800px;
   margin: 0 auto;
   background-color: #555;
-  background-image: url("../img/block/cobblestone.png");
+  background-image: url("../resourcepacks/vanilla/assets/minecraft/textures/block/cobblestone.png");
   background-blend-mode: multiply;
   background-size: 10rem 10rem;
 }

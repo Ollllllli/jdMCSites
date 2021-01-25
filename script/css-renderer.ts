@@ -2,19 +2,50 @@
 // therefore: z=0 front, y=0 bottom, x=0 left
 // simple as mc(x,y,z) => css(x,-y,z)
 
+class OnceCache<T> {
+  private dataStore = new Map<string,T>();
+  get(key: string) { return this.dataStore.get(key); }
+  has(key: string) { return this.dataStore.has(key); }
+  add(key: string, value: T | (()=>T)) {
+    if (!this.has(key)) {
+      if (value instanceof Function)
+        this.dataStore.set(key, value());
+      else
+        this.dataStore.set(key, value);
+    }
+    return this.get(key)!;
+  }
+}
+
 const theMissingTexture = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/gPhBDwn+E/ABvyA/1Bas9NAAAAAElFTkSuQmCC";
 
-async function urlExists(url: string) : Promise<boolean>{
-  console.log("urlTest", url)
-  try {
-    const res = await fetch(url, {method: "HEAD"});
-    return res.status == 200;
-  } catch (e) {
-    return false;
+const __urlCache = new Map<string, Response | Promise<Response> | null>();
+const __imgBlobCache = new OnceCache<Promise<string>>();
+
+async function loadUrl(url: string): Promise<Response | null> {
+  const currCache = __urlCache.get(url);
+  if (currCache === undefined) {
+    __urlCache.set(url, fetch(url, {method: "GET"}));
+  }
+  else if (currCache === null) {
+    return currCache;
+  }
+  else if (currCache instanceof Response) {
+    return currCache;
+  }
+  const res = await __urlCache.get(url)!;
+  if (res.status == 200) {
+    __urlCache.set(url, res);
+    return res;
+  }
+  else {
+    __urlCache.set(url, null);
+    return null;
   }
 }
 
 // TODO: do shading with a sun vector.
+// TODO: UV map bg
 class CSSRPlane extends HTMLElement {
 
   static get observedAttributes() { return ["w","h","x","y","z","bg","face"] as const }
@@ -25,10 +56,13 @@ class CSSRPlane extends HTMLElement {
     this.style.backgroundSize = "cover";
     this.style.transformOrigin = "0% 100%";
     this.style.bottom = "0";
+    for (const a of CSSRPlane.observedAttributes) {
+      this.update(a);
+    }
   }
   attributeChangedCallback(name: typeof CSSRPlane["observedAttributes"][number]) { this.update(name) }
 
-  update(attr: typeof CSSRPlane["observedAttributes"][number]) {
+  async update(attr: typeof CSSRPlane["observedAttributes"][number]) {
     switch (attr) {
       case "w":
         this.attrValues.w = `calc(var(--unit) * ${parseFloat(this.getAttribute("w") || "1")})`;
@@ -48,17 +82,23 @@ class CSSRPlane extends HTMLElement {
         this.attrValues.z = `calc(var(--unit) * ${parseFloat(this.getAttribute("z") || "0")})`;
         break;
       case "bg":
-        this.attrValues.bg = this.getAttribute("bg") || theMissingTexture;
-        if (this.attrValues.bg == theMissingTexture) {
+        this.attrValues.bg = this.getAttribute("bg") as any;
+        if (!this.attrValues.bg) {
           this.style.backgroundImage = `url(${theMissingTexture})`;
         }
         else {
-          urlExists(this.attrValues.bg).then(v=>{
-            if (v) this.style.backgroundImage = `url(${this.getAttribute("bg")})`;
-            else this.style.backgroundImage = `url(${theMissingTexture})`;
-          });
+          const res = await loadUrl(this.attrValues.bg);
+          if (res === null) {
+            this.style.backgroundImage = `url(${theMissingTexture})`;
+          }
+          else {
+            const imgUri = await __imgBlobCache.add(this.attrValues.bg, async()=>{
+              const imgBlob = await res.blob();
+              return URL.createObjectURL(imgBlob);
+            });
+            this.style.backgroundImage = `url(${imgUri})`;
+          }
         }
-        
         break;
       case "face":
         this.attrValues.face = this.getAttribute("face") as any || "north";
@@ -114,21 +154,42 @@ class CSSRElement extends HTMLElement {
   //
   // takes a lower coord, and upper coord
   private cssrElementOrigin = document.createElement("css-renderer-origin")  as CSSROrigin;
-  private northFace?: CSSRPlane;
-  private southFace?: CSSRPlane;
-  private eastFace?: CSSRPlane;
-  private westFace?: CSSRPlane;
-  private upFace?: CSSRPlane;
-  private downFace?: CSSRPlane;
+  private northFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
+  private southFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
+  private eastFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
+  private westFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
+  private upFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
+  private downFace: CSSRPlane
+    = document.createElement("css-renderer-plane") as CSSRPlane;
   private attrValues: Record<typeof CSSRElement["observedAttributes"][number], any> = {} as any;
   static get observedAttributes() { return ["from","to","north","south","east","west","up","down","noshade"] as const }
   constructor() {
     super();
     this.attrValues.to = [16,16,16];
     this.attrValues.from = [0,0,0];
+    this.northFace.setAttribute("face", "north");
+    this.southFace.setAttribute("face", "south");
+    this.eastFace.setAttribute("face", "east");
+    this.westFace.setAttribute("face", "west");
+    this.upFace.setAttribute("face", "up");
+    this.downFace.setAttribute("face", "down");
+    this.cssrElementOrigin.append(
+      this.northFace,
+      this.southFace,
+      this.eastFace,
+      this.westFace,
+      this.upFace,
+      this.downFace
+    );
   }
   connectedCallback() {
-    this.append(this.cssrElementOrigin);
+    if (this.childElementCount < 1)
+      this.append(this.cssrElementOrigin);
   }
   attributeChangedCallback(name: typeof CSSRElement["observedAttributes"][number]) { this.update(name) }
   update(attr: typeof CSSRElement["observedAttributes"][number]) {
@@ -145,43 +206,67 @@ class CSSRElement extends HTMLElement {
       case "west":
       case "up":
       case "down":
-        if (!(this as any)[attr+"Face"]) {
-          (this as any)[attr+"Face"] = document.createElement("css-renderer-plane") as CSSRPlane;
-          this.cssrElementOrigin.append((this as any)[attr+"Face"]);
-          (this as any)[attr+"Face"].setAttribute("face", attr);
-        }
-        this.attrValues[attr] = this.getAttribute(attr) || "";
-        (this as any)[attr+"Face"].setAttribute("bg", this.attrValues[attr]);
+        (this as any)[attr+"Face"].setAttribute("bg", this.getAttribute(attr) || "");
         break;
-      case "noshade":
-        this.attrValues.noshade = this.hasAttribute("noshade");
-        break;
+    }
+    if (this.hasAttribute("noshade")) {
+      //@ts-ignore
+      this.northFace.style.backgroundBlendMode = "normal";
+      this.northFace.style.backgroundColor = "#0000";
+      //@ts-ignore
+      this.southFace.style.backgroundBlendMode = "normal";
+      this.southFace.style.backgroundColor = "#0000";
+      //@ts-ignore
+      this.westFace.style.backgroundBlendMode = "normal";
+      this.westFace.style.backgroundColor = "#0000";
+      //@ts-ignore
+      this.eastFace.style.backgroundBlendMode = "normal";
+      this.eastFace.style.backgroundColor = "#0000";
+      //@ts-ignore
+      this.downFace.style.backgroundBlendMode = "normal";
+      this.downFace.style.backgroundColor = "#0000";
+    }
+    else {
+      //@ts-ignore
+      this.northFace.style.backgroundBlendMode = "multiply";
+      this.northFace.style.backgroundColor = "#ccc";
+      //@ts-ignore
+      this.southFace.style.backgroundBlendMode = "multiply";
+      this.southFace.style.backgroundColor = "#ccc";
+      //@ts-ignore
+      this.westFace.style.backgroundBlendMode = "multiply";
+      this.westFace.style.backgroundColor = "#999";
+      //@ts-ignore
+      this.eastFace.style.backgroundBlendMode = "multiply";
+      this.eastFace.style.backgroundColor = "#999";
+      //@ts-ignore
+      this.downFace.style.backgroundBlendMode = "multiply";
+      this.downFace.style.backgroundColor = "#777";
     }
     // used for shifting for element rotation origin, aswell as general positioning
     // this.cssrElementOrigin.setAttribute("x", String(from[0]));
     // this.cssrElementOrigin.setAttribute("y", String(from[1]));
     // this.cssrElementOrigin.setAttribute("z", String(from[2]));
-    this.northFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
-    this.northFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
-    this.northFace?.setAttribute("x", String(this.attrValues.to[0]));
-    this.southFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
-    this.southFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
-    this.southFace?.setAttribute("z", String(this.attrValues.to[2]));
-    this.eastFace?.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
-    this.eastFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
-    this.eastFace?.setAttribute("x", String(this.attrValues.to[0]));
-    this.eastFace?.setAttribute("z", String(this.attrValues.to[2]));
-    this.westFace?.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
-    this.westFace?.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
-    this.westFace?.setAttribute("z", String(this.attrValues.to[2]));
-    this.upFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
-    this.upFace?.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
-    this.upFace?.setAttribute("x", String(this.attrValues.to[0]));
-    this.upFace?.setAttribute("z", String(this.attrValues.to[2]));
-    this.downFace?.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
-    this.downFace?.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
-    this.downFace?.setAttribute("x", String(this.attrValues.to[0]));
-    this.downFace?.setAttribute("z", String(this.attrValues.to[2]));
+    this.northFace.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.northFace.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.northFace.setAttribute("x", String(this.attrValues.to[0]));
+    this.southFace.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.southFace.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.southFace.setAttribute("z", String(this.attrValues.to[2]));
+    this.eastFace.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.eastFace.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.eastFace.setAttribute("x", String(this.attrValues.to[0]));
+    this.eastFace.setAttribute("z", String(this.attrValues.to[2]));
+    this.westFace.setAttribute("w", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.westFace.setAttribute("h", String(this.attrValues.to[1]-this.attrValues.from[1]));
+    this.upFace.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.upFace.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.upFace.setAttribute("x", String(this.attrValues.to[0]));
+    this.upFace.setAttribute("y", String(this.attrValues.to[1]));
+    this.downFace.setAttribute("w", String(this.attrValues.to[0]-this.attrValues.from[0]));
+    this.downFace.setAttribute("h", String(this.attrValues.to[2]-this.attrValues.from[2]));
+    this.downFace.setAttribute("x", String(this.attrValues.to[0]));
+    this.downFace.setAttribute("z", String(this.attrValues.to[2]));
   }
 }
 
