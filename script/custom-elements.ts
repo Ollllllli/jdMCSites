@@ -110,10 +110,10 @@ class MCAdvancement extends HTMLElement {
   }
 
   private advancementIcons: AdvancementIconMap = {
-    story: {root: ["block","grass_block"], mine_stone: ["item","wooden_pickaxe"], upgrade_tools: ["item","stone_pickaxe"], smelt_iron: ["item","iron_ingot"], obtain_armor: ["item","iron_chestplate"], lava_bucket: ["item","lava_bucket"], iron_tools: ["item","iron_pickaxe"], deflect_arrow: ["block","shield"], form_obsidian: ["block","obsidian"], mine_diamond: ["item","diamond"], enter_the_nether: ["item","flint_and_steel"], shiny_gear: ["item","diamond_chestplate"], enchant_item: ["item","enchanted_book","enchanted"], cure_zombie_villager: ["item","golden_apple"], follow_ender_eye: ["item","ender_eye"], enter_the_end: ["block","end_stone"]},
+    story: {root: ["block","grass_block"], mine_stone: ["item","wooden_pickaxe"], upgrade_tools: ["item","stone_pickaxe"], smelt_iron: ["item","iron_ingot"], obtain_armor: ["item","iron_chestplate"], lava_bucket: ["item","lava_bucket"], iron_tools: ["item","iron_pickaxe"], deflect_arrow: ["item","shield"], form_obsidian: ["block","obsidian"], mine_diamond: ["item","diamond"], enter_the_nether: ["item","flint_and_steel"], shiny_gear: ["item","diamond_chestplate"], enchant_item: ["item","enchanted_book","enchanted"], cure_zombie_villager: ["item","golden_apple"], follow_ender_eye: ["item","ender_eye"], enter_the_end: ["block","end_stone"]},
     nether: {root: ["block","red_nether_bricks"], return_to_sender: ["item","fire_charge"], find_bastion: ["block","polished_blackstone_bricks"], obtain_ancient_debris: ["block","ancient_debris"], fast_travel: ["item", "map"], find_fortress: ["block", "nether_bricks"], obtain_crying_obsidian: ["block","crying_obsidian"], distract_piglin: ["item","gold_ingot"], ride_strider: ["item","warped_fungus_on_a_stick"], uneasy_alliance: ["item","ghast_tear"], loot_bastion: ["block","chest"], use_lodestone: ["block","lodestone"], netherite_armor: ["item","netherite_chestplate"], get_wither_skull: ["block","wither_skeleton_skull"], obtain_blaze_rod: ["item","blaze_rod"], charge_respawn_anchor: ["block","respawn_anchor_0"], explore_nether: ["item","netherite_boots"], summon_wither: ["item","nether_star","enchanted"], brew_potion: ["item","uncraftable_potion"], create_beacon: ["block","beacon"], all_potions: ["item","milk_bucket"], create_full_beacon: ["block","beacon"], all_effects: ["item","bucket"]},
     end: {root: ["block","end_stone"], kill_dragon: ["block","dragon_head"], dragon_egg: ["block","dragon_egg"], enter_end_gateway: ["item","ender_pearl"], respawn_dragon: ["item","end_crystal","enchanted"], dragon_breath: ["item","dragon_breath"], find_end_city: ["block","purpur_block"], elytra: ["item","elytra"], levitate: ["item","shulker_shell"]},
-    adventure: {root: ["item","map"], voluntary_exile: ["block","ominous_banner"], kill_a_mob: ["item","iron_sword"], trade: ["item","emerald"], honey_block_slide: ["block","honey_block"], ol_betsy: ["item","crossbow_standby"], sleep_in_bed: ["block","red_bed"], hero_of_the_village: ["block","ominous_banner"], throw_trident: ["item","trident"], shoot_arrow: ["item", "bow"], kill_all_mobs: ["item","diamond_sword"], totem_of_undying: ["item","totem_of_undying"], summon_iron_golem: ["block","carved_pumpkin"], two_birds_one_arrow: ["item","crossbow_standby"], whos_the_pillager_now: ["item","crossbow_standby"], arbalistic: ["item","crossbow_standby"], adventuring_time: ["item","diamond_boots"], very_very_frightening: ["item","trident"], sniper_duel: ["item","arrow"], bullseye: ["block","target"]},
+    adventure: {root: ["item","map"], voluntary_exile: ["block","ominous_banner"], kill_a_mob: ["item","iron_sword"], trade: ["item","emerald"], honey_block_slide: ["block","honey_block"], ol_betsy: ["item","crossbow"], sleep_in_bed: ["block","red_bed"], hero_of_the_village: ["block","ominous_banner"], throw_trident: ["item","trident"], shoot_arrow: ["item", "bow"], kill_all_mobs: ["item","diamond_sword"], totem_of_undying: ["item","totem_of_undying"], summon_iron_golem: ["block","carved_pumpkin"], two_birds_one_arrow: ["item","crossbow"], whos_the_pillager_now: ["item","crossbow"], arbalistic: ["item","crossbow"], adventuring_time: ["item","diamond_boots"], very_very_frightening: ["item","trident"], sniper_duel: ["item","arrow"], bullseye: ["block","target"]},
     husbandry: {root: ["block","hay_block"], safely_harvest_honey: ["item","honey_bottle"], breed_an_animal: ["item","wheat"], tame_an_animal: ["item","lead"], fishy_business: ["item","fishing_rod"], silk_touch_nest: ["block","bee_nest"], plant_seed: ["item","wheat"], bred_all_animals: ["item","golden_carrot"], complete_catalogue: ["item","cod"], tactical_fishing: ["item","pufferfish_bucket"], balanced_diet: ["item","apple"], obtain_netherite_hoe: ["item","netherite_hoe"]},
   }
 }
@@ -394,7 +394,7 @@ const __modelCache = new OnceCache<{model: JSONModel, elements: string[]}>();
 class MCItemIcon extends HTMLElement {
 
   static get observedAttributes() {
-    return ["model", "enchanted", "res"] as const;
+    return ["model", "enchanted"] as const;
   }
 
   private shadow: ShadowRoot
@@ -455,7 +455,7 @@ class MCItemIcon extends HTMLElement {
     this.style.display = "block";
     this.style.width = "100%";
     this.style.height = "100%";
-    const res = parseFloat(this.getAttribute("res") || "20");
+    // const res = parseFloat(this.getAttribute("res") || "20");
     // font size can be set to be this inner height
     this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight||64}px;}`;
     this.renderer.rootOrigin.innerHTML = "";
@@ -477,22 +477,34 @@ class MCItemIcon extends HTMLElement {
       const elements: string[] = [];
       for (const modelElement of model["elements"]!) {
         const ele = document.createElement("css-renderer-element") as CSSRElement;
-        if (model.gui_light == "front") ele.setAttribute("noshade", "");
+        if ((model.gui_light || "front") == "front") ele.setAttribute("noshade", "");
         ele.setAttribute("from", modelElement.from.join(","));
         ele.setAttribute("to", modelElement.to.join(","));
         // each tests for face.texture to see if its blank texture
-        if (modelElement.faces?.north && modelElement.faces.north.texture)
-          ele.setAttribute("north", await this.getTexture(modelElement.faces.north.texture));
-        if (modelElement.faces?.south && modelElement.faces.south.texture)
-          ele.setAttribute("south", await this.getTexture(modelElement.faces.south.texture));
-        if (modelElement.faces?.east && modelElement.faces.east.texture)
-          ele.setAttribute("east", await this.getTexture(modelElement.faces.east.texture));
-        if (modelElement.faces?.west && modelElement.faces.west.texture)
-          ele.setAttribute("west", await this.getTexture(modelElement.faces.west.texture));
-        if (modelElement.faces?.up && modelElement.faces.up.texture)
-          ele.setAttribute("up", await this.getTexture(modelElement.faces.up.texture));
-        if (modelElement.faces?.down && modelElement.faces.down.texture)
-          ele.setAttribute("down", await this.getTexture(modelElement.faces.down.texture));
+        if (modelElement.faces?.north && modelElement.faces.north.texture) {
+          ele.north = await this.getTexture(modelElement.faces.north.texture);
+          ele.northUV = modelElement.faces.north.uv || [0,0,16,16];
+        }
+        if (modelElement.faces?.south && modelElement.faces.south.texture) {
+          ele.south = await this.getTexture(modelElement.faces.south.texture);
+          ele.southUV = modelElement.faces.south.uv || [0,0,16,16];
+        }
+        if (modelElement.faces?.east && modelElement.faces.east.texture) {
+          ele.east = await this.getTexture(modelElement.faces.east.texture);
+          ele.eastUV = modelElement.faces.east.uv || [0,0,16,16];
+        }
+        if (modelElement.faces?.west && modelElement.faces.west.texture) {
+          ele.west = await this.getTexture(modelElement.faces.west.texture);
+          ele.westUV = modelElement.faces.west.uv || [0,0,16,16];
+        }
+        if (modelElement.faces?.up && modelElement.faces.up.texture) {
+          ele.up = await this.getTexture(modelElement.faces.up.texture);
+          ele.upUV = modelElement.faces.up.uv || [0,0,16,16];
+        }
+        if (modelElement.faces?.down && modelElement.faces.down.texture) {
+          ele.down = await this.getTexture(modelElement.faces.down.texture);
+          ele.downUV = modelElement.faces.down.uv || [0,0,16,16];
+        }
         elements.push(ele.outerHTML);
       }
       __modelCache.add(modelAttr, {model, elements});
@@ -527,9 +539,10 @@ class MCItemIcon extends HTMLElement {
     // merge tree into mergedModel
     const mergedModel: JSONModel = { textures: {} };
     for (const model of modelTree) {
-      Object.assign(mergedModel["textures"], model["textures"]);
-      if (model["display"]) mergedModel["display"] = model["display"];
-      if (model["elements"]) mergedModel["elements"] = model["elements"];
+      for (const texture in model["textures"])
+        mergedModel["textures"]![texture] = model["textures"][texture];
+      if (model["display"]) mergedModel["display"] = { ...mergedModel["display"], ...JSON.parse(JSON.stringify(model["display"])) };
+      if (model["elements"]) mergedModel["elements"] = JSON.parse(JSON.stringify(model["elements"]));
       if (model["gui_light"]) mergedModel["gui_light"] = model["gui_light"];
     }
     // preprocess textures
@@ -537,8 +550,10 @@ class MCItemIcon extends HTMLElement {
       let done = false;
       while (!done) {
         done = true;
-        for (const face of Object.values(modelElement["faces"]||{})) {
-          if (face?.texture.startsWith("#")) {
+        for (const faceKey in modelElement["faces"]) {
+          //@ts-ignore
+          const face = modelElement["faces"][faceKey];
+          if (face.texture.startsWith("#")) {
             done = false;
             // set blank texture
             face.texture = mergedModel["textures"]![face.texture.slice(1)] || "";

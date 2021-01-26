@@ -13,7 +13,7 @@ select {
   position: absolute;
   right: 0;
   top: -1.4rem;
-  border-image: url("../img/border-button.png") 25%;
+  border-image: url("../img/gui/border-button.png") 25%;
   border-style: solid;
   border-width: 0.4rem;
   overflow: visible;
@@ -24,31 +24,31 @@ select {
   padding: 0.1em;
 }
 select:hover {
-  border-image: url("../img/border-button-active.png") 25%;
+  border-image: url("../img/gui/border-button-active.png") 25%;
   background-color: #280;
   color: #fff;
   cursor: pointer;
 }
 select:focus {
-  border-image: url("../img/border-inset.png") 25%;
+  border-image: url("../img/gui/border-inset.png") 25%;
   outline: none;
   background-color: #999;
   padding: 0;
 }
 select > option {
   padding: 0.1em 0.5em 0.1em 1.5em;
-  background: url("../img/small-check.png") 0.15em 0.2em / 1em no-repeat;
+  background: url("../img/gui/small-check.png") 0.15em 0.2em / 1em no-repeat;
   color: #333;
 }
 select > option:hover {
   color: #fff;
-  background: url("../img/small-check-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
+  background: url("../img/gui/small-check-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
 }
 select > option:checked {
-  background: url("../img/small-checked.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#555,#555);
+  background: url("../img/gui/small-checked.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#555,#555);
 }
 select > option:checked:hover {
-  background: url("../img/small-checked-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
+  background: url("../img/gui/small-checked-active.png") 0.15em 0.2em / 1em no-repeat, linear-gradient(#280,#280);
 }
 
 mc-header {

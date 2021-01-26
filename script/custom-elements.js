@@ -133,7 +133,7 @@ class MCAdvancement extends HTMLElement {
                 "iron_pickaxe"
             ],
             deflect_arrow: [
-                "block",
+                "item",
                 "shield"
             ],
             form_obsidian: [
@@ -327,7 +327,7 @@ class MCAdvancement extends HTMLElement {
             ],
             ol_betsy: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             sleep_in_bed: [
                 "block",
@@ -359,15 +359,15 @@ class MCAdvancement extends HTMLElement {
             ],
             two_birds_one_arrow: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             whos_the_pillager_now: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             arbalistic: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             adventuring_time: [
                 "item",
@@ -1258,8 +1258,7 @@ class MCItemIcon extends HTMLElement {
     static get observedAttributes() {
         return [
             "model",
-            "enchanted",
-            "res"
+            "enchanted"
         ];
     }
     shadow = this.attachShadow({
@@ -1358,7 +1357,7 @@ class MCItemIcon extends HTMLElement {
         this.style.display = "block";
         this.style.width = "100%";
         this.style.height = "100%";
-        const res = parseFloat(this.getAttribute("res") || "20");
+        // const res = parseFloat(this.getAttribute("res") || "20");
         // font size can be set to be this inner height
         this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight || 64}px;}`;
         this.renderer.rootOrigin.innerHTML = "";
@@ -1380,16 +1379,64 @@ class MCItemIcon extends HTMLElement {
             const elements = [];
             for (const modelElement of model["elements"]){
                 const ele = document.createElement("css-renderer-element");
-                if (model.gui_light == "front") ele.setAttribute("noshade", "");
+                if ((model.gui_light || "front") == "front") ele.setAttribute("noshade", "");
                 ele.setAttribute("from", modelElement.from.join(","));
                 ele.setAttribute("to", modelElement.to.join(","));
                 // each tests for face.texture to see if its blank texture
-                if (modelElement.faces?.north && modelElement.faces.north.texture) ele.setAttribute("north", await this.getTexture(modelElement.faces.north.texture));
-                if (modelElement.faces?.south && modelElement.faces.south.texture) ele.setAttribute("south", await this.getTexture(modelElement.faces.south.texture));
-                if (modelElement.faces?.east && modelElement.faces.east.texture) ele.setAttribute("east", await this.getTexture(modelElement.faces.east.texture));
-                if (modelElement.faces?.west && modelElement.faces.west.texture) ele.setAttribute("west", await this.getTexture(modelElement.faces.west.texture));
-                if (modelElement.faces?.up && modelElement.faces.up.texture) ele.setAttribute("up", await this.getTexture(modelElement.faces.up.texture));
-                if (modelElement.faces?.down && modelElement.faces.down.texture) ele.setAttribute("down", await this.getTexture(modelElement.faces.down.texture));
+                if (modelElement.faces?.north && modelElement.faces.north.texture) {
+                    ele.north = await this.getTexture(modelElement.faces.north.texture);
+                    ele.northUV = modelElement.faces.north.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.south && modelElement.faces.south.texture) {
+                    ele.south = await this.getTexture(modelElement.faces.south.texture);
+                    ele.southUV = modelElement.faces.south.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.east && modelElement.faces.east.texture) {
+                    ele.east = await this.getTexture(modelElement.faces.east.texture);
+                    ele.eastUV = modelElement.faces.east.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.west && modelElement.faces.west.texture) {
+                    ele.west = await this.getTexture(modelElement.faces.west.texture);
+                    ele.westUV = modelElement.faces.west.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.up && modelElement.faces.up.texture) {
+                    ele.up = await this.getTexture(modelElement.faces.up.texture);
+                    ele.upUV = modelElement.faces.up.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.down && modelElement.faces.down.texture) {
+                    ele.down = await this.getTexture(modelElement.faces.down.texture);
+                    ele.downUV = modelElement.faces.down.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
                 elements.push(ele.outerHTML);
             }
             __modelCache.add(modelAttr, {
@@ -1431,9 +1478,12 @@ class MCItemIcon extends HTMLElement {
             }
         };
         for (const model of modelTree){
-            Object.assign(mergedModel["textures"], model["textures"]);
-            if (model["display"]) mergedModel["display"] = model["display"];
-            if (model["elements"]) mergedModel["elements"] = model["elements"];
+            for(const texture in model["textures"])mergedModel["textures"][texture] = model["textures"][texture];
+            if (model["display"]) mergedModel["display"] = {
+                ...mergedModel["display"],
+                ...JSON.parse(JSON.stringify(model["display"]))
+            };
+            if (model["elements"]) mergedModel["elements"] = JSON.parse(JSON.stringify(model["elements"]));
             if (model["gui_light"]) mergedModel["gui_light"] = model["gui_light"];
         }
         // preprocess textures
@@ -1441,9 +1491,10 @@ class MCItemIcon extends HTMLElement {
             let done = false;
             while(!done){
                 done = true;
-                for (const face of Object.values(modelElement["faces"] || {
-                })){
-                    if (face?.texture.startsWith("#")) {
+                for(const faceKey in modelElement["faces"]){
+                    //@ts-ignore
+                    const face = modelElement["faces"][faceKey];
+                    if (face.texture.startsWith("#")) {
                         done = false;
                         // set blank texture
                         face.texture = mergedModel["textures"][face.texture.slice(1)] || "";
