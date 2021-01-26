@@ -62,7 +62,7 @@ class MCAdvancement extends HTMLElement {
                         if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0]]) {
                             const mappedArray = this.advancementIcons[nsSplit[0]][nsSplit[1]];
                             const enchanted = mappedArray.includes("enchanted") ? " enchanted" : "";
-                            this.shadow.innerHTML = `<mc-item-icon type="${mappedArray[0]}" name="${mappedArray[1]}"${enchanted}></mc-item-icon>`;
+                            this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}" ${enchanted}></mc-item-icon>`;
                         }
                     }
                     break;
@@ -133,7 +133,7 @@ class MCAdvancement extends HTMLElement {
                 "iron_pickaxe"
             ],
             deflect_arrow: [
-                "block",
+                "item",
                 "shield"
             ],
             form_obsidian: [
@@ -327,7 +327,7 @@ class MCAdvancement extends HTMLElement {
             ],
             ol_betsy: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             sleep_in_bed: [
                 "block",
@@ -359,15 +359,15 @@ class MCAdvancement extends HTMLElement {
             ],
             two_birds_one_arrow: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             whos_the_pillager_now: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             arbalistic: [
                 "item",
-                "crossbow_standby"
+                "crossbow"
             ],
             adventuring_time: [
                 "item",
@@ -1242,135 +1242,282 @@ class MCAdvancementView extends HTMLElement {
     advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
     svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
 }
-const imageDir = document.currentScript.src + "/../../img/";
-const blocksConfigPromise = fetch(`${imageDir}block/blocks.json`).then((v)=>{
-    return v.json();
-});
-const itemIconTypes = [
-    "block",
-    "item",
-    "none"
-];
-const itemTextureCache = new Map();
+const webRoot = `${document.currentScript.src}/../../`;
+const currentResourcePack = "vanilla";
+function namespacedResource(pack, section, namespacedId, extension) {
+    if (namespacedId === null || namespacedId === undefined) return "/__null";
+    const namespaceSplit = namespacedId.includes(":") ? namespacedId.split(":") : [
+        "minecraft",
+        namespacedId
+    ];
+    return `${webRoot}resourcepacks/${pack}/assets/${namespaceSplit[0]}/${section}/${namespaceSplit[1]}.${extension}`;
+}
+const __jsonModelCache = new OnceCache();
+const __modelCache = new OnceCache();
 class MCItemIcon extends HTMLElement {
     static get observedAttributes() {
         return [
-            "name",
-            "type",
-            "enchanted",
-            "res"
+            "model",
+            "enchanted"
         ];
     }
     shadow = this.attachShadow({
         mode: "closed"
     });
-    renderer = null;
-    itemCanvas = document.createElement("canvas");
-    itemCanvasContext = this.itemCanvas.getContext("2d");
-    itemType = "none";
-    itemName = "";
-    itemIsEnchanted = false;
-    itemRes = 48;
+    renderer = document.createElement("css-renderer");
+    innerStyle = document.createElement("style");
+    isUpdating = false;
+    baseBlockModel = {
+        gui_light: "side",
+        display: {
+            gui: {
+                rotation: [
+                    30,
+                    225,
+                    0
+                ],
+                translation: [
+                    0,
+                    0,
+                    0
+                ],
+                scale: [
+                    0.625,
+                    0.625,
+                    0.625
+                ]
+            }
+        },
+        elements: [
+            {
+                from: [
+                    0,
+                    0,
+                    0
+                ],
+                to: [
+                    16,
+                    16,
+                    16
+                ]
+            }
+        ]
+    };
+    baseItemModel = {
+        gui_light: "front",
+        display: {
+            gui: {
+                rotation: [
+                    0,
+                    180,
+                    0
+                ],
+                translation: [
+                    0,
+                    0,
+                    0
+                ],
+                scale: [
+                    1,
+                    1,
+                    1
+                ]
+            }
+        },
+        elements: [
+            {
+                from: [
+                    0,
+                    0,
+                    8
+                ],
+                to: [
+                    16,
+                    16,
+                    8
+                ],
+                faces: {
+                    south: {
+                        texture: "#layer0"
+                    }
+                }
+            }
+        ]
+    };
     constructor(){
         super();
-        const style = document.createElement("style");
-        style.textContent = `\n      canvas {\n        width: 100%;\n        height: 100%;\n      }\n    `;
-        this.shadow.append(style, this.itemCanvas);
+        this.shadow.append(this.innerStyle, this.renderer);
     }
-    async drawCanvas(itemType, itemName) {
-        const blocksConfig = await blocksConfigPromise;
-        if (itemType == "block") {
-            const faces = blocksConfig["block"][itemName] ?? [];
-            const loadTexturesPromise = [];
-            // load textures
-            for (const [_, textureName] of faces){
-                if (!itemTextureCache.has(textureName)) {
-                    if (itemTextureCache.get(textureName) instanceof Promise) continue;
-                    const textureDataPromise = loadTexture(`${imageDir}block/${textureName}.png`);
-                    itemTextureCache.set(textureName, textureDataPromise);
-                }
-                const texturePromise = itemTextureCache.get(textureName);
-                loadTexturesPromise.push(texturePromise);
+    // need to cache merged model maybe for when update() is called
+    async update() {
+        if (this.isUpdating) return;
+        this.isUpdating = true;
+        const modelAttr = this.getAttribute("model");
+        if (!modelAttr) return;
+        this.style.display = "block";
+        this.style.width = "100%";
+        this.style.height = "100%";
+        // const res = parseFloat(this.getAttribute("res") || "20");
+        // font size can be set to be this inner height
+        this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight || 64}px;}`;
+        this.renderer.rootOrigin.innerHTML = "";
+        if (__modelCache.has(modelAttr)) {
+            const cachedModel = __modelCache.get(modelAttr);
+            this.renderer.setAttribute("rotate", cachedModel.model?.display?.gui.rotation.join(","));
+            this.renderer.setAttribute("scale", cachedModel.model?.display?.gui.scale.join(","));
+            this.renderer.setAttribute("translate", cachedModel.model?.display?.gui.translation.join(","));
+            for (const ele of cachedModel.elements){
+                this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
             }
-            await Promise.all(loadTexturesPromise);
-            // draw faces
-            for (const [modelName, textureName] of faces){
-                // load texture from cache
-                const faceTexture = await itemTextureCache.get(textureName);
-                let textureFilter = undefined;
-                if (modelName == "left") textureFilter = {
-                    brightness: 0.8
-                };
-                else if (modelName == "right") textureFilter = {
-                    brightness: 0.6
-                };
-                this.renderer.renderQuad(this.itemCanvasContext, {
-                    topLeft: blocksConfig["model"][modelName][0],
-                    topRight: blocksConfig["model"][modelName][3],
-                    bottomLeft: blocksConfig["model"][modelName][1],
-                    bottomRight: blocksConfig["model"][modelName][2]
-                }, faceTexture, textureFilter);
-            }
-        } else if (itemType == "item") {
-            const itemTexturePath = `${imageDir}item/${itemName}.png`;
-            if (!itemTextureCache.has(itemTexturePath)) {
-                const itemTexturePromise = loadTexture(itemTexturePath);
-                itemTextureCache.set(itemTexturePath, itemTexturePromise);
-                console.log(itemTexturePath, await itemTexturePromise);
-            }
-            const itemTexture = await itemTextureCache.get(itemTexturePath);
-            this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"][0],
-                topRight: blocksConfig["model"]["flat"][3],
-                bottomLeft: blocksConfig["model"]["flat"][1],
-                bottomRight: blocksConfig["model"]["flat"][2]
-            }, itemTexture);
         } else {
-            if (!itemTextureCache.has("@MISSING@")) {
-                const itemTexturePromise = loadTexture(null);
-                itemTextureCache.set("@MISSING@", itemTexturePromise);
+            const model = await this.resolveModel(this.getAttribute("model") || null);
+            // move render camera
+            this.renderer.setAttribute("rotate", model?.display?.["gui"].rotation.join(","));
+            this.renderer.setAttribute("scale", model?.display?.["gui"].scale.join(","));
+            this.renderer.setAttribute("translate", model?.display?.["gui"].translation.join(","));
+            // go through each element, and add it to renderer
+            const elements = [];
+            for (const modelElement of model["elements"]){
+                const ele = document.createElement("css-renderer-element");
+                if ((model.gui_light || "front") == "front") ele.setAttribute("noshade", "");
+                ele.setAttribute("from", modelElement.from.join(","));
+                ele.setAttribute("to", modelElement.to.join(","));
+                // each tests for face.texture to see if its blank texture
+                if (modelElement.faces?.north && modelElement.faces.north.texture) {
+                    ele.north = await this.getTexture(modelElement.faces.north.texture);
+                    ele.northUV = modelElement.faces.north.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.south && modelElement.faces.south.texture) {
+                    ele.south = await this.getTexture(modelElement.faces.south.texture);
+                    ele.southUV = modelElement.faces.south.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.east && modelElement.faces.east.texture) {
+                    ele.east = await this.getTexture(modelElement.faces.east.texture);
+                    ele.eastUV = modelElement.faces.east.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.west && modelElement.faces.west.texture) {
+                    ele.west = await this.getTexture(modelElement.faces.west.texture);
+                    ele.westUV = modelElement.faces.west.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.up && modelElement.faces.up.texture) {
+                    ele.up = await this.getTexture(modelElement.faces.up.texture);
+                    ele.upUV = modelElement.faces.up.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                if (modelElement.faces?.down && modelElement.faces.down.texture) {
+                    ele.down = await this.getTexture(modelElement.faces.down.texture);
+                    ele.downUV = modelElement.faces.down.uv || [
+                        0,
+                        0,
+                        16,
+                        16
+                    ];
+                }
+                elements.push(ele.outerHTML);
             }
-            const itemTexture = await itemTextureCache.get("@MISSING@");
-            this.renderer.renderQuad(this.itemCanvasContext, {
-                topLeft: blocksConfig["model"]["flat"][0],
-                topRight: blocksConfig["model"]["flat"][3],
-                bottomLeft: blocksConfig["model"]["flat"][1],
-                bottomRight: blocksConfig["model"]["flat"][2]
-            }, itemTexture);
+            __modelCache.add(modelAttr, {
+                model,
+                elements
+            });
+            for (const ele of elements){
+                this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
+            }
         }
+        this.isUpdating = false;
     }
-    updateProperty(key) {
-        let value;
-        switch(key){
-            case "type":
-                value = this.getAttribute("type");
-                if (itemIconTypes.includes(value)) this.itemType = value;
-                break;
-            case "name":
-                this.itemName = this.getAttribute("name") ?? "";
-                break;
-            case "enchanted":
-                this.itemIsEnchanted = this.hasAttribute("enchanted");
-                break;
-            case "res":
-                value = this.getAttribute("res");
-                value > 0 ? this.itemRes = value : 0;
-                break;
+    // provide default model
+    // resolve to a merged model
+    async resolveModel(namespacedId) {
+        if (namespacedId === null) return this.baseItemModel;
+        let modelFilename = namespacedResource("vanilla", "models", namespacedId, "json");
+        let modelRes = await loadUrl(modelFilename);
+        const modelTree = [];
+        // get heirachy into tree
+        if (modelRes !== null) {
+            let currModel = await __jsonModelCache.add(modelFilename, ()=>modelRes.json()
+            );
+            modelTree.unshift(currModel);
+            while(currModel["parent"]){
+                modelFilename = namespacedResource("vanilla", "models", currModel["parent"], "json");
+                modelRes = await loadUrl(modelFilename);
+                if (modelRes === null) break;
+                currModel = await __jsonModelCache.add(modelFilename, ()=>modelRes.json()
+                );
+                modelTree.unshift(currModel);
+            }
         }
+        // add in a basic model as a placeholder if nothing found
+        modelTree.unshift(namespacedId.includes("block/") ? this.baseBlockModel : this.baseItemModel);
+        // merge tree into mergedModel
+        const mergedModel = {
+            textures: {
+            }
+        };
+        for (const model of modelTree){
+            for(const texture in model["textures"])mergedModel["textures"][texture] = model["textures"][texture];
+            if (model["display"]) mergedModel["display"] = {
+                ...mergedModel["display"],
+                ...JSON.parse(JSON.stringify(model["display"]))
+            };
+            if (model["elements"]) mergedModel["elements"] = JSON.parse(JSON.stringify(model["elements"]));
+            if (model["gui_light"]) mergedModel["gui_light"] = model["gui_light"];
+        }
+        // preprocess textures
+        for (const modelElement of mergedModel["elements"]){
+            let done = false;
+            while(!done){
+                done = true;
+                for(const faceKey in modelElement["faces"]){
+                    //@ts-ignore
+                    const face = modelElement["faces"][faceKey];
+                    if (face.texture.startsWith("#")) {
+                        done = false;
+                        // set blank texture
+                        face.texture = mergedModel["textures"][face.texture.slice(1)] || "";
+                    }
+                }
+            }
+        }
+        return mergedModel;
+    }
+    async getTexture(namespacedId) {
+        const textureFilename = namespacedResource(currentResourcePack, "textures", namespacedId, "png");
+        const fallbackTextureFilename = namespacedResource("vanilla", "textures", namespacedId, "png");
+        const texture = await loadUrl(textureFilename);
+        if (texture !== null) return textureFilename;
+        else return fallbackTextureFilename;
     }
     connectedCallback() {
-        this.updateProperty("name");
-        this.updateProperty("type");
-        this.updateProperty("res");
-        this.updateProperty("enchanted");
-        this.itemCanvas.width = this.itemRes;
-        this.itemCanvas.height = this.itemRes;
-        this.renderer = new Renderer(this.itemCanvas.width, this.itemCanvas.height);
-        this.drawCanvas(this.itemType, this.itemName);
+        this.update();
+    }
+    attributeChangedCallback() {
+        this.update();
     }
 }
-// new MCItemIcon({ type: "block", name: "cobblestone" });
-document.head.insertAdjacentHTML("afterbegin", `\n  <style>\n    mc-item-icon {\n      display: inline-block;\n      width: 30em;\n      height: 30em;\n    }\n  </style>\n`);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);

@@ -39,7 +39,7 @@ body {
   width: 800px;
   margin: 0 auto;
   background-color: #555;
-  background-image: url("../img/block/cobblestone.png");
+  background-image: url("../resourcepacks/vanilla/assets/minecraft/textures/block/cobblestone.png");
   background-blend-mode: multiply;
   background-size: 10rem 10rem;
 }
@@ -49,7 +49,7 @@ body {
   background-color: #333;
   border-radius: 1.6rem;
   border-width: 1rem;
-  border-image: url("../img/border-toast.png") 37.5%;
+  border-image: url("../img/gui/border-toast.png") 37.5%;
   padding: 0.8rem;
 }
 
@@ -58,7 +58,7 @@ body {
   background-color: #201;
   border-radius: 1.6rem;
   border-width: 1rem;
-  border-image: url("../img/border-info.png") 37.5%;
+  border-image: url("../img/gui/border-info.png") 37.5%;
 }
 
 .loading-icon {
@@ -71,11 +71,11 @@ body {
   animation: 0.4s linear infinite alternate loadingIcon;
 }
 @keyframes loadingIcon {
-  from {background-image: url("../img/load-1.png");}
-  25% {background-image: url("../img/load-2.png");}
-  50% {background-image: url("../img/load-3.png");}
-  75% {background-image: url("../img/load-4.png");}
-  to {background-image: url("../img/load-5.png");}
+  from {background-image: url("../img/gui/load-1.png");}
+  25% {background-image: url("../img/gui/load-2.png");}
+  50% {background-image: url("../img/gui/load-3.png");}
+  75% {background-image: url("../img/gui/load-4.png");}
+  to {background-image: url("../img/gui/load-5.png");}
 }
 
 /* .toast {

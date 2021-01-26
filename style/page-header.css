@@ -12,7 +12,7 @@ header > a {
   margin: auto;
   width: calc(11 / 17 * 4rem);
   height: 4rem;
-  background-image: url("../img/right-button.png");
+  background-image: url("../img/gui/right-button.png");
   background-repeat: no-repeat;
   background-size: 100%;
   transform: scaleX(-1);
