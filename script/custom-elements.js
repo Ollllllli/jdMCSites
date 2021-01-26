@@ -1348,8 +1348,11 @@ class MCItemIcon extends HTMLElement {
         super();
         this.shadow.append(this.innerStyle, this.renderer);
     }
+    connectedCallback() {
+        this.attributeChangedCallback();
+    }
     // need to cache merged model maybe for when update() is called
-    async update() {
+    async attributeChangedCallback() {
         if (this.isUpdating) return;
         this.isUpdating = true;
         const modelAttr = this.getAttribute("model");
@@ -1448,11 +1451,9 @@ class MCItemIcon extends HTMLElement {
                 this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
             }
         }
-        if (this.hasAttribute("enchanted")) {
-            for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")){
-                ele.overlay = "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png";
-                ele.overlayStyle = "css-renderer-overlay{mix-blend-mode:screen;background-size:400%;animation:20s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:400%}}";
-            }
+        for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")){
+            ele.overlay = this.hasAttribute("enchanted") ? "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png" : null;
+            ele.overlayStyle = "css-renderer-overlay {" + "mix-blend-mode: screen;" + "background-size: 400%;" + "animation: 20s linear infinite enchantGlint;" + "}" + "@keyframes enchantGlint {" + "from { background-position: 0% 0% }" + "to { background-position: 400% 400% }" + "}";
         }
         this.isUpdating = false;
     }
@@ -1517,12 +1518,6 @@ class MCItemIcon extends HTMLElement {
         const texture = await loadUrl(textureFilename);
         if (texture !== null) return textureFilename;
         else return fallbackTextureFilename;
-    }
-    connectedCallback() {
-        this.update();
-    }
-    attributeChangedCallback() {
-        this.update();
     }
 }
 customElements.define('mc-advancement', MCAdvancement);

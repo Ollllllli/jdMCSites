@@ -449,8 +449,10 @@ class MCItemIcon extends HTMLElement {
     );
   }
 
+  connectedCallback() { this.attributeChangedCallback() }
+
   // need to cache merged model maybe for when update() is called
-  private async update() {
+  private async attributeChangedCallback() {
     if (this.isUpdating) return;
     this.isUpdating = true;
     const modelAttr = this.getAttribute("model");
@@ -517,12 +519,23 @@ class MCItemIcon extends HTMLElement {
         this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
       }
     }
-    if (this.hasAttribute("enchanted")) {
-      for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")) {
-        (ele as CSSRPlane).overlay = "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png";
-        (ele as CSSRPlane).overlayStyle = "css-renderer-overlay{mix-blend-mode:screen;background-size:400%;animation:20s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:400%}}";
-      }
+    for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")) {
+      (ele as CSSRPlane).overlay
+        = this.hasAttribute("enchanted")
+        ? "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png"
+        : null;
+      (ele as CSSRPlane).overlayStyle
+        = "css-renderer-overlay {"
+        +   "mix-blend-mode: screen;"
+        +   "background-size: 400%;"
+        +   "animation: 20s linear infinite enchantGlint;"
+        + "}"
+        + "@keyframes enchantGlint {"
+        +   "from { background-position: 0% 0% }"
+        +   "to { background-position: 400% 400% }"
+        + "}";
     }
+    
     this.isUpdating = false;
   }
 
@@ -584,9 +597,6 @@ class MCItemIcon extends HTMLElement {
     else
       return fallbackTextureFilename;
   }
-
-  connectedCallback() { this.update(); }
-  attributeChangedCallback() { this.update() }
 }
 
 customElements.define('mc-advancement', MCAdvancement);

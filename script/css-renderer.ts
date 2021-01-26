@@ -183,10 +183,6 @@ class CSSRPlane extends HTMLElement {
       this.overlayElement.style.webkitMaskImage = "";
       this.overlayElement.style.maskImage = "";
     }
-    /*
-    
-css-renderer-overlay{background-size:200%;animation:4s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:200%}}
-    */
   }
 }
 
