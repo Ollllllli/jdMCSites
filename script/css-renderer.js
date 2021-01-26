@@ -226,6 +226,8 @@ class CSSRPlane extends HTMLElement {
         this.overlayElement.style.maskSize = "cover";
         this.overlayElement.style.width = "100%";
         this.overlayElement.style.height = "100%";
+        this.overlayElement.style.top = "0";
+        this.overlayElement.style.left = "0";
         if (this.overlay) {
             this.overlayElement.style.backgroundImage = `url(${this.overlay})`;
             this.overlayElement.style.webkitMaskImage = `url(${this.bg})`;
