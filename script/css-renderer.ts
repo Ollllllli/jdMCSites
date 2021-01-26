@@ -49,11 +49,14 @@ const __faceDirections = ["north","south","east","west","up","down"] as const;
 class CSSRPlane extends HTMLElement {
 
   static get observedAttributes()
-    { return ["w","h","x","y","z","bg","uv","face","brightness"] as const };
+    { return ["w","h","x","y","z","bg","uv","face","brightness","overlay","overlay-style"] as const };
   private props
     = { w: 16, h: 16, x: 0, y: 0, z: 0, bg: "", brightness: 1,
         uv: [0,0,16,16] as [number,number,number,number],
-        face: "north" as typeof __faceDirections[number] };
+        face: "north" as typeof __faceDirections[number],
+        overlay: null as string | null, overlayStyle: "" };
+  private overlayElement = document.createElement("css-renderer-overlay");
+  private overlayStyleElement = document.createElement("style");
 
   get w() { return this.props.w }
   get h() { return this.props.h }
@@ -64,6 +67,8 @@ class CSSRPlane extends HTMLElement {
   get face() { return this.props.face }
   get bg() { return this.props.bg }
   get brightness() { return this.props.brightness }
+  get overlay() { return this.props.overlay }
+  get overlayStyle() { return this.props.overlayStyle }
   set w(val: number) { this.setAttribute("w", String(val)) }
   set h(val: number) { this.setAttribute("h", String(val)) }
   set x(val: number) { this.setAttribute("x", String(val)) }
@@ -73,12 +78,17 @@ class CSSRPlane extends HTMLElement {
   set face(val: typeof __faceDirections[number]) { this.setAttribute("face", val) }
   set bg(val: string) { this.setAttribute("bg", val) }
   set brightness(val: number) { this.setAttribute("brightness", String(val)) }
+  set overlay(val: string | null) { this.setAttribute("overlay", val || "") }
+  set overlayStyle(val: string) { this.setAttribute("overlay-style", val) }
 
   connectedCallback() {
     this.style.display = "inline-block";
     this.style.backgroundSize = "cover";
     this.style.transformOrigin = "0% 100%";
     this.style.bottom = "0";
+    if (!this.contains(this.overlayElement)) {
+      this.append(this.overlayStyleElement, this.overlayElement);
+    }
   }
 
   async attributeChangedCallback(attr: typeof CSSRPlane["observedAttributes"][number], _: never, attrValue: string) {
@@ -121,6 +131,12 @@ class CSSRPlane extends HTMLElement {
         }
       }
     }
+    else if (attr == "overlay") {
+      this.props.overlay = attrValue || null;
+    }
+    else if (attr == "overlay-style") {
+      this.props.overlayStyle = attrValue || "";
+    }
 
     let transform: string = "";
     transform += "translate3d(";
@@ -149,6 +165,26 @@ class CSSRPlane extends HTMLElement {
       this.style.filter = `brightness(${this.brightness})`;
       (this.style as any).backgroundBlendMode = "multiply";
     }
+
+    this.overlayStyleElement.textContent = this.overlayStyle;
+    this.overlayElement.style.webkitMaskSize = "cover";
+    this.overlayElement.style.maskSize = "cover";
+    this.overlayElement.style.width = "100%";
+    this.overlayElement.style.height = "100%";
+    if (this.overlay) {
+      this.overlayElement.style.backgroundImage = `url(${this.overlay})`;
+      this.overlayElement.style.webkitMaskImage = `url(${this.bg})`;
+      this.overlayElement.style.maskImage = `url(${this.bg})`;
+    }
+    else {
+      this.overlayElement.style.backgroundImage = "";
+      this.overlayElement.style.webkitMaskImage = "";
+      this.overlayElement.style.maskImage = "";
+    }
+    /*
+    
+css-renderer-overlay{background-size:200%;animation:4s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:200%}}
+    */
   }
 }
 
@@ -180,7 +216,7 @@ class CSSROrigin extends HTMLElement {
 class CSSRElement extends HTMLElement {
   static get observedAttributes() { return [
     "from","to","north","south","east","west","up","down","noshade",
-    "northuv","southuv","eastuv","westuv","upuv","downuv",
+    "northuv","southuv","eastuv","westuv","upuv","downuv"
   ] as const }
   //shadowRoot = this.attachShadow({mode: "open"});
   private props = {
@@ -198,7 +234,7 @@ class CSSRElement extends HTMLElement {
     westUV: [0,0,16,16] as [number,number,number,number],
     upUV: [0,0,16,16] as [number,number,number,number],
     downUV: [0,0,16,16] as [number,number,number,number],
-    noshade: true
+    noshade: true,
   };
   get from() { return this.props.from }
   get to() { return this.props.to }

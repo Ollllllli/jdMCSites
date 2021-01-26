@@ -398,11 +398,11 @@ class MCItemIcon extends HTMLElement {
   }
 
   private shadow: ShadowRoot
-    = this.attachShadow({mode: "closed"});
+    = this.attachShadow({mode: "open"});
   private renderer: CSSRenderer
     = document.createElement("css-renderer") as CSSRenderer;
   private innerStyle: HTMLStyleElement
-    = document.createElement("style")
+    = document.createElement("style");
   private isUpdating: boolean
     = false;
   private baseBlockModel: JSONModel
@@ -443,7 +443,10 @@ class MCItemIcon extends HTMLElement {
 
   constructor() {
     super();
-    this.shadow.append(this.innerStyle, this.renderer);
+    this.shadow.append(
+      this.innerStyle,
+      this.renderer,
+    );
   }
 
   // need to cache merged model maybe for when update() is called
@@ -455,9 +458,11 @@ class MCItemIcon extends HTMLElement {
     this.style.display = "block";
     this.style.width = "100%";
     this.style.height = "100%";
+    this.style.position = "relative";
     // const res = parseFloat(this.getAttribute("res") || "20");
     // font size can be set to be this inner height
-    this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight||64}px;}`;
+    this.innerStyle.textContent
+      = `css-renderer{font-size:${this.clientHeight||64}px;}`;
     this.renderer.rootOrigin.innerHTML = "";
     if (__modelCache.has(modelAttr)) {
       const cachedModel = __modelCache.get(modelAttr)!;
@@ -510,6 +515,12 @@ class MCItemIcon extends HTMLElement {
       __modelCache.add(modelAttr, {model, elements});
       for (const ele of elements) {
         this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
+      }
+    }
+    if (this.hasAttribute("enchanted")) {
+      for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")) {
+        (ele as CSSRPlane).overlay = "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png";
+        (ele as CSSRPlane).overlayStyle = "css-renderer-overlay{mix-blend-mode:screen;background-size:400%;animation:20s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:400%}}";
       }
     }
     this.isUpdating = false;

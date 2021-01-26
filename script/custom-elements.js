@@ -1262,7 +1262,7 @@ class MCItemIcon extends HTMLElement {
         ];
     }
     shadow = this.attachShadow({
-        mode: "closed"
+        mode: "open"
     });
     renderer = document.createElement("css-renderer");
     innerStyle = document.createElement("style");
@@ -1357,6 +1357,7 @@ class MCItemIcon extends HTMLElement {
         this.style.display = "block";
         this.style.width = "100%";
         this.style.height = "100%";
+        this.style.position = "relative";
         // const res = parseFloat(this.getAttribute("res") || "20");
         // font size can be set to be this inner height
         this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight || 64}px;}`;
@@ -1445,6 +1446,12 @@ class MCItemIcon extends HTMLElement {
             });
             for (const ele of elements){
                 this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
+            }
+        }
+        if (this.hasAttribute("enchanted")) {
+            for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")){
+                ele.overlay = "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png";
+                ele.overlayStyle = "css-renderer-overlay{mix-blend-mode:screen;background-size:400%;animation:20s linear infinite enchantGlint}@keyframes enchantGlint{from{background-position:0%}to{background-position:400%}}";
             }
         }
         this.isUpdating = false;
