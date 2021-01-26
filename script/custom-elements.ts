@@ -45,7 +45,7 @@ class MCAdvancement extends HTMLElement {
     return MCAdvancement.advancementAttributes;
   }
 
-  shadow = this.attachShadow({mode: 'open'});
+  shadow = this.attachShadow({mode: 'closed'});
   savedAttributes: Record<typeof MCAdvancement.advancementAttributes[number], string | null> = {
     col: null,
     row: null,
@@ -73,7 +73,7 @@ class MCAdvancement extends HTMLElement {
             if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0] as AdvancementCategory]) {
               const mappedArray = this.advancementIcons[nsSplit[0] as AdvancementCategory][nsSplit[1]];
               const enchanted = (mappedArray.includes("enchanted")) ? " enchanted" : "";
-              this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}" ${enchanted}></mc-item-icon>`;
+              this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}"${enchanted}></mc-item-icon>`;
             }
           }
           break;
