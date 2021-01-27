@@ -22,6 +22,7 @@ function generateSelect(keyValue) {
         select: selectElement
     };
 }
+const pixelSize = 4;
 class MCAdvancement extends HTMLElement {
     static advancementAttributes = [
         'col',
@@ -34,9 +35,7 @@ class MCAdvancement extends HTMLElement {
     static get observedAttributes() {
         return MCAdvancement.advancementAttributes;
     }
-    shadow = this.attachShadow({
-        mode: 'open'
-    });
+    //shadow = this.attachShadow({mode: 'closed'}); removed as it doesnt allow sibling elements
     savedAttributes = {
         col: null,
         row: null,
@@ -44,6 +43,8 @@ class MCAdvancement extends HTMLElement {
         done: "false",
         type: "normal"
     };
+    savedTooltip = null;
+    currentlyIconed = false;
     constructor(){
         super();
     }
@@ -62,7 +63,23 @@ class MCAdvancement extends HTMLElement {
                         if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0]]) {
                             const mappedArray = this.advancementIcons[nsSplit[0]][nsSplit[1]];
                             const enchanted = mappedArray.includes("enchanted") ? " enchanted" : "";
-                            this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}" ${enchanted}></mc-item-icon>`;
+                            if (this.currentlyIconed == false) {
+                                this.insertAdjacentHTML("afterbegin", `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}"${enchanted}></mc-item-icon>`);
+                                this.currentlyIconed = true;
+                            }
+                            if (this.savedTooltip == null) {
+                                console.log('creating saved tooltip');
+                                this.savedTooltip = new MCTooltipFancy();
+                                console.log(this.savedTooltip);
+                                this.insertAdjacentElement("afterbegin", this.savedTooltip);
+                                console.log(this);
+                            }
+                            this.savedTooltip.titleText = "hey dude!";
+                            this.savedTooltip.contentText = "what is up my dude?";
+                        } else {
+                            this.querySelector("mc-item-icon")?.remove();
+                            this.currentlyIconed = false;
+                            this.savedTooltip?.remove();
                         }
                     }
                     break;
@@ -475,9 +492,9 @@ class MCAdvancementView extends HTMLElement {
         //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
         //x=4 for width=1000px
         mainGrid.style.display = "inline-grid";
-        mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},48px)`;
-        mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},48px)`;
-        mainGrid.style.gap = "8px";
+        mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},${String(12 * pixelSize)}px)`;
+        mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},${String(12 * pixelSize)}px)`;
+        mainGrid.style.gap = `${String(2 * pixelSize)}px`;
         for(const advancementName in this.advancementTemplates[category]){
             const advTemplate = this.advancementTemplates[category][advancementName];
             mainGrid.appendChild(this.createAdvancement(category, advancementName, advTemplate.row, advTemplate.col, advTemplate.type));
@@ -574,8 +591,8 @@ class MCAdvancementView extends HTMLElement {
             this.style.display = "block";
             this.style.textAlign = "center";
             this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
-            this.style.backgroundSize = "64px";
-            this.style.padding = "8px";
+            this.style.backgroundSize = `${String(16 * pixelSize)}px`;
+            this.style.padding = `${String(2 * pixelSize)}px`;
             const advancementView = this.generateAdvancementDiv(category);
             this.appendChild(advancementView);
             const cachedSVGEle = this.cachedSVGs[category];
@@ -1238,9 +1255,10 @@ class MCAdvancementView extends HTMLElement {
             columns: 6
         }
     };
+    //filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
     //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
-    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
-    svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: 12;\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: 4;\n    }\n  `;
+    advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      position: relative;\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n  `;
+    svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: ${String(3 * pixelSize)};\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: ${String(pixelSize)};\n    }\n  `;
 }
 const webRoot = `${document.currentScript.src}/../../`;
 const currentResourcePack = "vanilla";
@@ -1518,6 +1536,102 @@ class MCItemIcon extends HTMLElement {
         this.update();
     }
 }
+class MCTooltipFast extends HTMLElement {
+    constructor(){
+        super();
+    }
+}
+class MCTooltipFancy extends HTMLElement {
+    shadow = this.attachShadow({
+        mode: "closed"
+    });
+    titleDiv = document.createElement("div");
+    contentDiv = document.createElement("div");
+    headerDiv = document.createElement("div");
+    storedParent = null;
+    // Needed for attributeChangedCallback
+    static get observedAttributes() {
+        return [
+            "done",
+            "category"
+        ];
+    }
+    set titleText(text) {
+        this.titleDiv.innerText = text;
+    }
+    set contentText(text) {
+        this.contentDiv.innerText = text;
+    }
+    updateSelf() {
+        const doneValue = this.getAttribute("done");
+        const cateValue = this.getAttribute("category");
+        if (doneValue != null) {
+            this.headerDiv.setAttribute("done", "");
+        } else {
+            this.headerDiv.removeAttribute("done");
+        }
+        if (cateValue == "challenge") {
+            this.contentDiv.setAttribute("challenge", "");
+        } else {
+            this.contentDiv.removeAttribute("challenge");
+        }
+    }
+    setupParent() {
+        if (this.storedParent != null) {
+            this.storedParent.addEventListener("mouseover", ()=>{
+                this.style.visibility = "visible";
+            });
+            this.storedParent.addEventListener("mouseout", ()=>{
+                this.style.visibility = "hidden";
+            });
+        }
+    }
+    clearParent() {
+        if (this.storedParent != null) {
+            this.storedParent.removeEventListener("mouseover", ()=>{
+                this.style.visibility = "visible";
+            });
+            this.storedParent.removeEventListener("mouseout", ()=>{
+                this.style.visibility = "hidden";
+            });
+        }
+    }
+    constructor(){
+        super();
+        const fillerDiv = document.createElement("div"); // The gap before the title div
+        const styleEle = document.createElement("style");
+        const parentDiv = document.createElement("div");
+        parentDiv.id = "parent";
+        fillerDiv.id = "filler";
+        this.headerDiv.id = "header";
+        this.titleDiv.id = "title";
+        this.contentDiv.id = "content";
+        styleEle.textContent = this.styling;
+        this.headerDiv.append(fillerDiv, this.titleDiv);
+        parentDiv.append(this.headerDiv, this.contentDiv);
+        this.shadow.append(styleEle, parentDiv);
+    }
+    connectedCallback() {
+        this.storedParent = this.parentElement;
+        this.style.display = "inline-block";
+        this.style.visibility = "hidden";
+        this.style.position = "absolute";
+        this.style.left = "-12px";
+        this.style.top = "12px";
+        this.style.zIndex = "-1";
+        this.style.pointerEvents = "none";
+        this.updateSelf();
+        this.setupParent();
+    }
+    attributeChangedCallback() {
+        this.updateSelf();
+    }
+    disconnectedCallback() {
+        this.clearParent();
+    }
+    styling = `\n    div {\n      font-size: ${String(8 * pixelSize)}px;\n      line-height: ${String(8 * pixelSize)}px;\n    }\n\n    div#parent {\n      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n    }\n\n    div#header {\n      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n      color: white; \n      margin: -${String(2 * pixelSize)}px;\n      width: max-content;\n    }\n\n    div#header[done] {\n      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;\n    }\n\n    div#header>div {\n      display: inline-block;\n    }\n\n    div#filler {\n      width: ${String(26 * pixelSize)}px;\n    }\n\n    div#title {\n      padding: ${String(4 * pixelSize)}px;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #3E3E3E;\n    }\n\n    div#content {\n      color: #54FC54;\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    div#content[challenge] {\n      color: #A800A8;\n    }\n  `;
+}
+customElements.define('mc-tooltip-fancy', MCTooltipFancy);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);

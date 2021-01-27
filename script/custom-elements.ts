@@ -35,6 +35,7 @@ function generateSelect(keyValue: [optionValue: string, optionLabel: string][]) 
 // }
 
 type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: ["item"|"block", string, "enchanted"?] } }
+const pixelSize = 4;
 
 class MCAdvancement extends HTMLElement {
   
@@ -45,7 +46,7 @@ class MCAdvancement extends HTMLElement {
     return MCAdvancement.advancementAttributes;
   }
 
-  shadow = this.attachShadow({mode: 'open'});
+  //shadow = this.attachShadow({mode: 'closed'}); removed as it doesnt allow sibling elements
   savedAttributes: Record<typeof MCAdvancement.advancementAttributes[number], string | null> = {
     col: null,
     row: null,
@@ -53,6 +54,8 @@ class MCAdvancement extends HTMLElement {
     done: "false",
     type: "normal",
   };
+  savedTooltip: MCTooltipFancy | null = null;
+  currentlyIconed = false;
 
   constructor() {
     super();
@@ -73,7 +76,24 @@ class MCAdvancement extends HTMLElement {
             if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0] as AdvancementCategory]) {
               const mappedArray = this.advancementIcons[nsSplit[0] as AdvancementCategory][nsSplit[1]];
               const enchanted = (mappedArray.includes("enchanted")) ? " enchanted" : "";
-              this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}" ${enchanted}></mc-item-icon>`;
+              if (this.currentlyIconed == false) {
+                this.insertAdjacentHTML("afterbegin",`<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}"${enchanted}></mc-item-icon>`);
+                this.currentlyIconed = true;
+              }
+              
+              if (this.savedTooltip == null) {
+                console.log('creating saved tooltip');
+                this.savedTooltip = new MCTooltipFancy();
+                console.log(this.savedTooltip);
+                this.insertAdjacentElement("afterbegin",this.savedTooltip);
+                console.log(this);
+              }
+              this.savedTooltip.titleText = "hey dude!";
+              this.savedTooltip.contentText = "what is up my dude?";
+            } else {
+              this.querySelector("mc-item-icon")?.remove();
+              this.currentlyIconed = false;
+              this.savedTooltip?.remove();
             }
           }
           break;
@@ -161,9 +181,9 @@ class MCAdvancementView extends HTMLElement {
     //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
     //x=4 for width=1000px
     mainGrid.style.display = "inline-grid";
-    mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},48px)`;
-    mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},48px)`;
-    mainGrid.style.gap = "8px";
+    mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},${String(12*pixelSize)}px)`;
+    mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},${String(12*pixelSize)}px)`;
+    mainGrid.style.gap = `${String(2*pixelSize)}px`;
     for (const advancementName in this.advancementTemplates[category]) {
       const advTemplate = this.advancementTemplates[category][advancementName];
       mainGrid.appendChild(this.createAdvancement(category, advancementName, advTemplate.row, advTemplate.col, advTemplate.type));
@@ -244,8 +264,8 @@ class MCAdvancementView extends HTMLElement {
       this.style.display = "block";
       this.style.textAlign = "center";
       this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
-      this.style.backgroundSize = "64px";
-      this.style.padding = "8px";
+      this.style.backgroundSize = `${String(16*pixelSize)}px`;
+      this.style.padding = `${String(2*pixelSize)}px`;
       const advancementView = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementView);
       const cachedSVGEle = this.cachedSVGs[category as AdvancementCategory];
@@ -300,6 +320,7 @@ class MCAdvancementView extends HTMLElement {
     husbandry: {rows: 13, columns: 6}
   };
 
+  //filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   private readonly advancementStyling = `
     mc-advancement {
@@ -307,7 +328,7 @@ class MCAdvancementView extends HTMLElement {
       padding: 20px;
       background-size: cover;
       background-image: url(./img/gui/advancement-normal.png);
-      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
+      position: relative;
     }
 
     mc-advancement[type="challenge"] {
@@ -340,12 +361,12 @@ class MCAdvancementView extends HTMLElement {
 
     line#black, polyline#black {
       stroke: rgb(0,0,0);
-      stroke-width: 12;
+      stroke-width: ${String(3*pixelSize)};
     }
 
     line#white, polyline#white {
       stroke: rgb(255,255,255);
-      stroke-width: 4;
+      stroke-width: ${String(pixelSize)};
     }
   `
 }
@@ -578,6 +599,148 @@ class MCItemIcon extends HTMLElement {
   attributeChangedCallback() { this.update() }
 }
 
+class MCTooltipFast extends HTMLElement {
+  constructor() {
+    super();
+  }
+}
+
+class MCTooltipFancy extends HTMLElement {
+  private shadow: ShadowRoot = this.attachShadow({mode: "closed"});
+  private titleDiv = document.createElement("div");
+  private contentDiv = document.createElement("div");
+  private headerDiv = document.createElement("div");
+  private storedParent: HTMLElement | null = null;
+
+  // Needed for attributeChangedCallback
+  static get observedAttributes() {
+    return ["done","category"];
+  }
+
+  set titleText(text: string) {
+    this.titleDiv.innerText = text
+  }
+
+  set contentText(text: string) {
+    this.contentDiv.innerText = text
+  }
+
+  private updateSelf() {
+    const doneValue = this.getAttribute("done");
+    const cateValue = this.getAttribute("category");
+    if (doneValue != null) { this.headerDiv.setAttribute("done",""); } else { this.headerDiv.removeAttribute("done"); }
+    if (cateValue == "challenge") { this.contentDiv.setAttribute("challenge",""); } else { this.contentDiv.removeAttribute("challenge"); }
+  }
+
+  private setupParent() {
+    if (this.storedParent != null) {
+      this.storedParent.addEventListener("mouseover", ()=>{
+        this.style.visibility = "visible";
+        //this.storedParent!.style.zIndex = "10";
+      });
+      this.storedParent.addEventListener("mouseout", ()=>{
+        this.style.visibility = "hidden";
+        //this.storedParent!.style.zIndex = "0";
+      });
+    }
+  }
+
+  private clearParent() {
+    if (this.storedParent != null) {
+      this.storedParent.removeEventListener("mouseover", ()=>{this.style.visibility = "visible";});
+      this.storedParent.removeEventListener("mouseout", ()=>{this.style.visibility = "hidden";});
+    }
+  }
+
+  constructor() {
+    super();
+    const fillerDiv = document.createElement("div"); // The gap before the title div
+    const styleEle = document.createElement("style");
+    const parentDiv = document.createElement("div");
+    parentDiv.id = "parent"
+    fillerDiv.id = "filler";
+    this.headerDiv.id = "header";
+    this.titleDiv.id = "title";
+    this.contentDiv.id = "content";
+    styleEle.textContent = this.styling;
+    this.headerDiv.append(fillerDiv,this.titleDiv);
+    parentDiv.append(this.headerDiv,this.contentDiv);
+    this.shadow.append(styleEle,parentDiv);
+  }
+
+  connectedCallback () {
+    this.storedParent = this.parentElement;
+    this.style.display = "inline-block";
+    this.style.visibility = "hidden";
+    this.style.position = "absolute";
+    this.style.left = "-12px";
+    this.style.top = "12px";
+    this.style.zIndex = "-1";
+    this.style.pointerEvents = "none";
+
+    this.updateSelf();
+    this.setupParent();
+  }
+
+  attributeChangedCallback() {
+    this.updateSelf();
+  }
+
+  disconnectedCallback() {
+    this.clearParent();
+  }
+
+  private styling = `
+    div {
+      font-size: ${String(8*pixelSize)}px;
+      line-height: ${String(8*pixelSize)}px;
+    }
+
+    div#parent {
+      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;
+      border-width: ${String(2*pixelSize)}px;
+      border-style: solid;
+    }
+
+    div#header {
+      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;
+      border-width: ${String(2*pixelSize)}px;
+      border-style: solid;
+      color: white; 
+      margin: -${String(2*pixelSize)}px;
+      width: max-content;
+    }
+
+    div#header[done] {
+      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;
+    }
+
+    div#header>div {
+      display: inline-block;
+    }
+
+    div#filler {
+      width: ${String(26*pixelSize)}px;
+    }
+
+    div#title {
+      padding: ${String(4*pixelSize)}px;
+      text-shadow: ${String(pixelSize*0.75)}px ${String(pixelSize*0.75)}px #3E3E3E;
+    }
+
+    div#content {
+      color: #54FC54;
+      text-shadow: none;
+      padding: ${String(4*pixelSize)}px ${String(2*pixelSize)}px ${String(2*pixelSize)}px;
+    }
+
+    div#content[challenge] {
+      color: #A800A8;
+    }
+  `
+}
+
+customElements.define('mc-tooltip-fancy', MCTooltipFancy);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);
