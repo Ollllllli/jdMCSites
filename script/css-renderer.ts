@@ -363,12 +363,12 @@ class CSSRElement extends HTMLElement {
       this.downFace.brightness = 1;
     }
     else {
-      this.northFace.brightness = 11/15;
-      this.southFace.brightness = 11/15;
-      this.eastFace.brightness = 9/15;
-      this.westFace.brightness = 9/15;
-      this.upFace.brightness = 15/15;
-      this.downFace.brightness = 7/15;
+      this.northFace.brightness = 0.5;
+      this.southFace.brightness = 0.5;
+      this.eastFace.brightness = 0.7;
+      this.westFace.brightness = 0.7;
+      this.upFace.brightness = 1.0;
+      this.downFace.brightness = 0.4;
     }
 
     if (this.to[0] - this.from[0] > 0 && this.to[1] - this.from[1]) {
@@ -496,7 +496,7 @@ class CSSRenderer extends HTMLElement {
           scaleY(${scaleComponents[1]})
           scaleZ(${scaleComponents[2]})
           rotateX(${-1*rotateComponents[0]}deg)
-          rotateY(${-1*rotateComponents[1]}deg)
+          rotateY(${rotateComponents[1]}deg)
           rotateZ(${-1*rotateComponents[2]}deg)
           translateX(calc(var(--unit)*${translateComponents[0]}))
           translateY(calc(var(--unit)*${-translateComponents[1]}))
