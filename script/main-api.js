@@ -139,12 +139,16 @@ class AdvancementsAPI extends CacheManager {
             console.log("Advancements Updated");
         }
         for (const uuid of this.uuids){
-            const rawAdvancement = JSON.parse(this.storage.getItem(`advancements:${uuid}`) ?? "{}");
+            const rawAdvancements = JSON.parse(this.storage.getItem(`advancements:${uuid}`) ?? "{}");
             // remap each criteria item to a date
-            for(const predicate in rawAdvancement["critera"]){
-                rawAdvancement["criteria"][predicate] = new Date(rawAdvancement["criteria"][predicate]);
+            for(const predicate in rawAdvancements){
+                if (predicate != "DateVersion") {
+                    for(const criterion in rawAdvancements[predicate]["criteria"]){
+                        rawAdvancements[predicate]["criteria"][criterion] = new Date(rawAdvancements[predicate]["criteria"][criterion]);
+                    }
+                }
             }
-            this.advancements.set(uuid, rawAdvancement);
+            this.advancements.set(uuid, rawAdvancements);
         }
         return isUpdated;
     }
@@ -158,7 +162,7 @@ class AdvancementsAPI extends CacheManager {
     }
     /** Gets the advancement completion date, or null if not completed.*/ getCompletionDate(name, uuid) {
         const progress = this.getProgress(name, uuid);
-        if (progress.done) return Object.values(progress.criteria).sort((a, b)=>b.valueOf() - a.valueOf()
+        if (progress.done == true) return Object.values(progress.criteria).sort((a, b)=>b.valueOf() - a.valueOf()
         )[0] ?? null;
         else return null;
     }
