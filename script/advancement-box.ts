@@ -1,7 +1,7 @@
 class MCAdvancementGui {
   advView: MCAdvancementView | null;
   advGuiRoot: Element | null = null;
-  constructor(private advInstance: AdvancementsAPI, private playerInstance: PlayerAPI, advGuiTag?: string) {
+  constructor (private advInstance: AdvancementsAPI, private playerInstance: PlayerAPI, advGuiTag?: string) {
     this.advView = document.querySelector("mc-advancement-view");
     if (advGuiTag) {
       this.advGuiRoot = document.querySelector(advGuiTag);
@@ -19,27 +19,29 @@ class MCAdvancementGui {
       
       categoryPickerSelect.addEventListener("change",()=>{
         this.changeAdvancementCategory(categoryPickerSelect.value);
-        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
+        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID);
       });
       uuidPickerSelect.addEventListener("change",()=>{
-        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
+        this.updateAdvancementsStatus(uuidPickerSelect.value as UUID);
       });
       this.advGuiRoot.insertAdjacentElement('afterbegin',mcHeaderEle);
-      this.updateAdvancementsStatus(uuidPickerSelect.value as UUID, categoryPickerSelect.value);
+      this.updateAdvancementsStatus(uuidPickerSelect.value as UUID);
     }
   }
 
-  updateAdvancementsStatus(uuid: UUID, category: string) {
+  updateAdvancementsStatus(uuid: UUID) {
     if (this.advView != null) {
-      for (const child of this.advView.querySelectorAll("[done='true']")) {
-        child.removeAttribute("done");
-      }
-
-      for (const adv of this.advInstance.getAllCompleted(uuid)) {
-        if (adv.includes(category)) {
-          const advEle = document.querySelector(`mc-advancement-view mc-advancement[ns="${adv}"]`);
-          if (advEle != null) {
+      const allCompleted = this.advInstance.getAllCompleted(uuid);
+      for (const advEle of this.advView.querySelectorAll("mc-advancement")) {
+        advEle.removeAttribute("done");
+        const namespace = advEle.getAttribute("ns");
+        if (namespace != null) {
+          if (allCompleted.includes(namespace)) {
             advEle.setAttribute("done","true");
+          }
+
+          if (advEle instanceof MCAdvancement) {
+            advEle.updateCriteria(this.advInstance.getProgress(namespace,uuid),this.advInstance.getCompletionDate(namespace,uuid))
           }
         }
       }

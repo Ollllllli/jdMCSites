@@ -44,25 +44,27 @@ class MCAdvancementGui {
             mcHeaderEle.append(uuidPickerRoot, categoryPickerRoot);
             categoryPickerSelect.addEventListener("change", ()=>{
                 this.changeAdvancementCategory(categoryPickerSelect.value);
-                this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
+                this.updateAdvancementsStatus(uuidPickerSelect.value);
             });
             uuidPickerSelect.addEventListener("change", ()=>{
-                this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
+                this.updateAdvancementsStatus(uuidPickerSelect.value);
             });
             this.advGuiRoot.insertAdjacentElement('afterbegin', mcHeaderEle);
-            this.updateAdvancementsStatus(uuidPickerSelect.value, categoryPickerSelect.value);
+            this.updateAdvancementsStatus(uuidPickerSelect.value);
         }
     }
-    updateAdvancementsStatus(uuid, category) {
+    updateAdvancementsStatus(uuid) {
         if (this.advView != null) {
-            for (const child of this.advView.querySelectorAll("[done='true']")){
-                child.removeAttribute("done");
-            }
-            for (const adv of this.advInstance.getAllCompleted(uuid)){
-                if (adv.includes(category)) {
-                    const advEle = document.querySelector(`mc-advancement-view mc-advancement[ns="${adv}"]`);
-                    if (advEle != null) {
+            const allCompleted = this.advInstance.getAllCompleted(uuid);
+            for (const advEle of this.advView.querySelectorAll("mc-advancement")){
+                advEle.removeAttribute("done");
+                const namespace = advEle.getAttribute("ns");
+                if (namespace != null) {
+                    if (allCompleted.includes(namespace)) {
                         advEle.setAttribute("done", "true");
+                    }
+                    if (advEle instanceof MCAdvancement) {
+                        advEle.updateCriteria(this.advInstance.getProgress(namespace, uuid), this.advInstance.getCompletionDate(namespace, uuid));
                     }
                 }
             }
