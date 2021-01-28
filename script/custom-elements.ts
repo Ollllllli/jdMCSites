@@ -34,6 +34,12 @@ function generateSelect(keyValue: [optionValue: string, optionLabel: string][]) 
 //   attributeChangedCallback() { this.updateAttributes() }
 // }
 
+//
+//
+// MC ADVANCEMENT
+//
+//
+
 type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: ["item"|"block", string, "enchanted"?] } }
 const pixelSize = 4;
 
@@ -80,20 +86,36 @@ class MCAdvancement extends HTMLElement {
                 this.insertAdjacentHTML("afterbegin",`<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}"${enchanted}></mc-item-icon>`);
                 this.currentlyIconed = true;
               }
-              
+
               if (this.savedTooltip == null) {
-                console.log('creating saved tooltip');
                 this.savedTooltip = new MCTooltipFancy();
-                console.log(this.savedTooltip);
                 this.insertAdjacentElement("afterbegin",this.savedTooltip);
-                console.log(this);
               }
+
               this.savedTooltip.titleText = "hey dude!";
               this.savedTooltip.contentText = "what is up my dude?";
             } else {
               this.querySelector("mc-item-icon")?.remove();
               this.currentlyIconed = false;
               this.savedTooltip?.remove();
+            }
+          }
+          break;
+        case 'type':
+          if (this.savedTooltip != null) {
+            if (this.savedAttributes.type == "challenge") {
+              this.savedTooltip.setAttribute("category","challenge");
+            } else {
+              this.savedTooltip.removeAttribute("category");
+            }
+          }
+          break;
+        case 'done':
+          if (this.savedTooltip != null) {
+            if (this.savedAttributes.done == "true") {
+              this.savedTooltip.setAttribute("done","");
+            } else {
+              this.savedTooltip.removeAttribute("done");
             }
           }
           break;
@@ -137,6 +159,12 @@ class MCAdvancement extends HTMLElement {
     husbandry: {root: ["block","hay_block"], safely_harvest_honey: ["item","honey_bottle"], breed_an_animal: ["item","wheat"], tame_an_animal: ["item","lead"], fishy_business: ["item","fishing_rod"], silk_touch_nest: ["block","bee_nest"], plant_seed: ["item","wheat"], bred_all_animals: ["item","golden_carrot"], complete_catalogue: ["item","cod"], tactical_fishing: ["item","pufferfish_bucket"], balanced_diet: ["item","apple"], obtain_netherite_hoe: ["item","netherite_hoe"]},
   }
 }
+
+//
+//
+// MC ADVANCEMENT VIEW
+//
+//
 
 const advancementCategories = ["story", "nether", "end", "adventure", "husbandry"] as const;
 type AdvancementCategory = typeof advancementCategories[number];
@@ -350,6 +378,12 @@ class MCAdvancementView extends HTMLElement {
     mc-advancement[done="true"][type="challenge"] {
       background-image: url(./img/gui/advancement-challenge-done.png);
     }
+
+    mc-advancement-view>div {
+      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
+      position: relative;
+      z-index: 0;
+    }
   `
 
   private readonly svgStyling = `
@@ -408,6 +442,12 @@ interface JSONModel {
     };
   }[];
 }
+
+//
+//
+// MC ITEM ICON
+//
+//
 
 const __jsonModelCache = new OnceCache<Promise<JSONModel>>();
 const __modelCache = new OnceCache<{model: JSONModel, elements: string[]}>();
@@ -599,18 +639,35 @@ class MCItemIcon extends HTMLElement {
   attributeChangedCallback() { this.update() }
 }
 
+//
+//
+// MC TOOLTIP FAST
+//
+//
+
 class MCTooltipFast extends HTMLElement {
   constructor() {
     super();
   }
 }
 
+//
+//
+// MC TOOLTIP FANCY
+//
+//
+
 class MCTooltipFancy extends HTMLElement {
   private shadow: ShadowRoot = this.attachShadow({mode: "closed"});
+  private headerDiv = document.createElement("div");
   private titleDiv = document.createElement("div");
   private contentDiv = document.createElement("div");
-  private headerDiv = document.createElement("div");
+  private detailsDiv = document.createElement("div");
   private storedParent: HTMLElement | null = null;
+  private storedParentInitialZIndex: string = "";
+  private storedParentInitialPosition: string = "";
+  private mouseOverFunc = ()=>{this.style.visibility = "visible";this.storedParent!.style.zIndex = ""};
+  private mouseOutFunc = ()=>{this.style.visibility = "hidden";this.storedParent!.style.zIndex = "-2"};
 
   // Needed for attributeChangedCallback
   static get observedAttributes() {
@@ -634,21 +691,19 @@ class MCTooltipFancy extends HTMLElement {
 
   private setupParent() {
     if (this.storedParent != null) {
-      this.storedParent.addEventListener("mouseover", ()=>{
-        this.style.visibility = "visible";
-        //this.storedParent!.style.zIndex = "10";
-      });
-      this.storedParent.addEventListener("mouseout", ()=>{
-        this.style.visibility = "hidden";
-        //this.storedParent!.style.zIndex = "0";
-      });
+      this.storedParent.style.zIndex = "-2";
+      this.storedParent.style.position = "relative";
+      this.storedParent.addEventListener("mouseover", this.mouseOverFunc);
+      this.storedParent.addEventListener("mouseout", this.mouseOutFunc);
     }
   }
 
   private clearParent() {
     if (this.storedParent != null) {
-      this.storedParent.removeEventListener("mouseover", ()=>{this.style.visibility = "visible";});
-      this.storedParent.removeEventListener("mouseout", ()=>{this.style.visibility = "hidden";});
+      this.storedParent.style.zIndex = this.storedParentInitialZIndex;
+      this.storedParent.style.position = this.storedParentInitialPosition;
+      this.storedParent.removeEventListener("mouseover", this.mouseOverFunc);
+      this.storedParent.removeEventListener("mouseout", this.mouseOutFunc);
     }
   }
 
@@ -670,6 +725,8 @@ class MCTooltipFancy extends HTMLElement {
 
   connectedCallback () {
     this.storedParent = this.parentElement;
+    this.storedParentInitialZIndex = (this.storedParent != null) ? this.storedParent.style.zIndex : "";
+    this.storedParentInitialPosition = (this.storedParent != null) ? this.storedParent.style.position : "";
     this.style.display = "inline-block";
     this.style.visibility = "hidden";
     this.style.position = "absolute";
@@ -694,6 +751,7 @@ class MCTooltipFancy extends HTMLElement {
     div {
       font-size: ${String(8*pixelSize)}px;
       line-height: ${String(8*pixelSize)}px;
+      text-align: left;
     }
 
     div#parent {
