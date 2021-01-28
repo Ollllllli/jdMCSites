@@ -73,15 +73,14 @@ class MCAdvancement extends HTMLElement {
                             this.savedTooltip = new MCTooltipFancy();
                             this.insertAdjacentElement("afterbegin", this.savedTooltip);
                         }
-                        this.savedTooltip.titleText = enchMap.title;
-                        this.savedTooltip.descriptionText = enchMap.desc;
+                        this.savedTooltip.setTitleText = enchMap.title;
+                        this.savedTooltip.setDescriptionText = enchMap.desc;
                         const criteriaList = document.createElement("ul");
-                        criteriaList.style.margin = "0";
                         for (const criterion of enchMap.criteria){
                             const criterionReadable = criterion.replaceAll("_", " ").replaceAll("minecraft:", "").replaceAll("textures/entity/cat/", "").replaceAll(".png", "");
                             criteriaList.insertAdjacentHTML("beforeend", `<li id="${criterion}">${criterionReadable}</li>`);
                         }
-                        this.savedTooltip.detailsContent = criteriaList;
+                        this.savedTooltip.setDetailsContent = criteriaList;
                     } else {
                         this.querySelector("mc-item-icon")?.remove();
                         this.currentlyIconed = false;
@@ -92,9 +91,9 @@ class MCAdvancement extends HTMLElement {
             case 'type':
                 if (this.savedTooltip != null) {
                     if (this.savedAttributes.type == "challenge") {
-                        this.savedTooltip.setAttribute("category", "challenge");
+                        this.savedTooltip.setAttribute("type", "challenge");
                     } else {
-                        this.savedTooltip.removeAttribute("category");
+                        this.savedTooltip.removeAttribute("type");
                     }
                 }
                 break;
@@ -107,6 +106,27 @@ class MCAdvancement extends HTMLElement {
                     }
                 }
                 break;
+        }
+    }
+    updateCriteria(advDetails, completionDate) {
+        if (this.savedTooltip != null) {
+            const criteriaListEle = this.savedTooltip.getDetailsContent;
+            if (criteriaListEle instanceof HTMLUListElement) {
+                const oldCompletionDate = criteriaListEle.querySelector("span#completionDate");
+                console.log(criteriaListEle);
+                if (oldCompletionDate != null) {
+                    oldCompletionDate.remove();
+                }
+                for (const criterionLI of criteriaListEle.querySelectorAll("li")){
+                    criterionLI.removeAttribute("done");
+                    if (criterionLI.id in advDetails.criteria) {
+                        criterionLI.setAttribute("done", "");
+                    }
+                }
+                if (advDetails.done == true) {
+                    criteriaListEle.insertAdjacentHTML("afterbegin", `<span id="completionDate">Completed: ${completionDate != null ? completionDate.toLocaleDateString() : "hacker"}</span>`);
+                }
+            }
         }
     }
     get getMiddle() {
@@ -1372,10 +1392,8 @@ class MCAdvancementView extends HTMLElement {
         advancementElement.setAttribute("col", String(col));
         return advancementElement;
     }
-    //Optimize:false is to render coords list every time
-    //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
     //clean this up
-    generateUnderlaySVG(category, optimise) {
+    generateUnderlaySVG(category) {
         const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgEle.style.position = "absolute";
         svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
@@ -1460,7 +1478,7 @@ class MCAdvancementView extends HTMLElement {
             this.appendChild(advancementView);
             const cachedSVGEle = this.cachedSVGs[category];
             if (cachedSVGEle == null) {
-                const svgEle = this.generateUnderlaySVG(category, false);
+                const svgEle = this.generateUnderlaySVG(category);
                 this.insertBefore(svgEle, this.querySelector("mc-advancement-view>div"));
                 this.cachedSVGs[category] = svgEle;
             } else {
@@ -1470,8 +1488,9 @@ class MCAdvancementView extends HTMLElement {
     }
     //When element is added to DOM
     connectedCallback() {
-        if (this.firstTime) this.firstTime = false;
-        console.log("connectedCallback");
+        if (this.firstTime) {
+            this.firstTime = false;
+        }
         const viewStyle = document.createElement("style");
         viewStyle.innerHTML = this.advancementStyling;
         this.appendChild(viewStyle);
@@ -1482,7 +1501,6 @@ class MCAdvancementView extends HTMLElement {
     }
     //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
     attributeChangedCallback(name, _, newValue) {
-        console.log("attributeChangedCallback");
         if (name == "category" && !this.firstTime) {
             const category = newValue;
             this.updateElement(category);
@@ -2452,21 +2470,27 @@ class MCTooltipFancy extends HTMLElement {
     static get observedAttributes() {
         return [
             "done",
-            "category"
+            "type"
         ];
     }
-    set titleText(text) {
+    set setTitleText(text) {
         this.titleDiv.innerText = text;
     }
-    set descriptionText(text) {
+    set setDescriptionText(text) {
         this.descriptionDiv.innerText = text;
     }
-    set detailsContent(contents) {
+    set setDetailsContent(contents) {
         this.detailsDivContent = contents;
+    }
+    get getDetailsContent() {
+        return this.detailsDivContent;
+    }
+    get getDetailsDiv() {
+        return this.detailsDiv;
     }
     updateSelf() {
         const doneValue = this.getAttribute("done");
-        const cateValue = this.getAttribute("category");
+        const cateValue = this.getAttribute("type");
         if (doneValue != null) {
             this.headerDiv.setAttribute("done", "");
         } else {
@@ -2530,8 +2554,8 @@ class MCTooltipFancy extends HTMLElement {
         this.headerDiv.append(this.titleDiv);
         parentDiv.append(this.headerDiv, this.descriptionDiv, this.detailsDiv);
         this.shadow.append(styleEle, parentDiv);
-        this.titleText = "Sample Title";
-        this.descriptionText = "Sample Description";
+        this.setTitleText = "Sample Title";
+        this.setDescriptionText = "Sample Description";
         this.closeDetails();
     }
     connectedCallback() {
@@ -2553,7 +2577,7 @@ class MCTooltipFancy extends HTMLElement {
     disconnectedCallback() {
         this.clearParent();
     }
-    styling = `\n    div {\n      font-size: ${String(8 * pixelSize)}px;\n      line-height: ${String(8 * pixelSize)}px;\n      text-align: left;\n    }\n\n    div#parent {\n      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n    }\n\n    div#header {\n      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n      color: white; \n      margin: -${String(2 * pixelSize)}px;\n    }\n\n    div#header[done] {\n      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;\n    }\n\n    div#header>div {\n      display: inline-block;\n    }\n\n    div#filler {\n      width: ${String(26 * pixelSize)}px;\n    }\n\n    div#title {\n      padding: ${String(4 * pixelSize)}px;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #3E3E3E;\n      width: max-content;\n      margin-left: ${String(26 * pixelSize)}px;\n    }\n\n    div#description {\n      color: #54FC54;\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    div#description[challenge] {\n      color: #A800A8;\n    }\n\n    div#details {\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    li["done"] {\n      color: #55FFFF;\n    }\n  `;
+    styling = `\n    div {\n      font-size: ${String(8 * pixelSize)}px;\n      line-height: ${String(8 * pixelSize)}px;\n      text-align: left;\n    }\n\n    div#parent {\n      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n    }\n\n    div#header {\n      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n      color: white; \n      margin: -${String(2 * pixelSize)}px;\n    }\n\n    div#header[done] {\n      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;\n    }\n\n    div#header>div {\n      display: inline-block;\n    }\n\n    div#filler {\n      width: ${String(26 * pixelSize)}px;\n    }\n\n    div#title {\n      padding: ${String(4 * pixelSize)}px;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #3E3E3E;\n      width: max-content;\n      margin-left: ${String(26 * pixelSize)}px;\n    }\n\n    div#description {\n      color: #54FC54;\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    div#description[challenge] {\n      color: #A800A8;\n    }\n\n    div#details {\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    ul {\n      list-style-type: none;\n      margin: 0px;\n      padding: 0px;\n    }\n\n    ul>li {\n      text-indent: ${String(3 * pixelSize)}px\n    }\n\n    ul>li:before {\n      content: "-";\n    }\n\n    li[done] {\n      color: #55FFFF;\n    }\n  `;
 }
 customElements.define('mc-tooltip-fancy', MCTooltipFancy);
 customElements.define('mc-advancement', MCAdvancement);

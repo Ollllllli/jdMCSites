@@ -93,15 +93,14 @@ class MCAdvancement extends HTMLElement {
               this.savedTooltip = new MCTooltipFancy();
               this.insertAdjacentElement("afterbegin",this.savedTooltip);
             }
-            this.savedTooltip.titleText = enchMap.title;
-            this.savedTooltip.descriptionText = enchMap.desc;
+            this.savedTooltip.setTitleText = enchMap.title;
+            this.savedTooltip.setDescriptionText = enchMap.desc;
             const criteriaList = document.createElement("ul");
-            criteriaList.style.margin = "0";
             for (const criterion of enchMap.criteria) {
               const criterionReadable = criterion.replaceAll("_"," ").replaceAll("minecraft:","").replaceAll("textures/entity/cat/","").replaceAll(".png","");
               criteriaList.insertAdjacentHTML("beforeend",`<li id="${criterion}">${criterionReadable}</li>`);
             }
-            this.savedTooltip.detailsContent = criteriaList;
+            this.savedTooltip.setDetailsContent = criteriaList;
           } else {
             this.querySelector("mc-item-icon")?.remove();
             this.currentlyIconed = false;
@@ -112,9 +111,9 @@ class MCAdvancement extends HTMLElement {
       case 'type':
         if (this.savedTooltip != null) {
           if (this.savedAttributes.type == "challenge") {
-            this.savedTooltip.setAttribute("category","challenge");
+            this.savedTooltip.setAttribute("type","challenge");
           } else {
-            this.savedTooltip.removeAttribute("category");
+            this.savedTooltip.removeAttribute("type");
           }
         }
         break;
@@ -128,6 +127,26 @@ class MCAdvancement extends HTMLElement {
         }
         break;
       }
+  }
+
+  updateCriteria(advDetails: {done: boolean, criteria: {[predicate: string]: Date;}}, completionDate: Date | null) {
+    if (this.savedTooltip != null) {
+      const criteriaListEle = this.savedTooltip.getDetailsContent;
+      if (criteriaListEle instanceof HTMLUListElement) {
+        const oldCompletionDate = criteriaListEle.querySelector("span#completionDate");
+        console.log(criteriaListEle);
+        if (oldCompletionDate != null) {oldCompletionDate.remove()}
+        for (const criterionLI of criteriaListEle.querySelectorAll("li")) {
+          criterionLI.removeAttribute("done");
+          if (criterionLI.id in advDetails.criteria) {
+            criterionLI.setAttribute("done","");
+          }
+        }
+        if (advDetails.done == true) {
+          criteriaListEle.insertAdjacentHTML("afterbegin",`<span id="completionDate">Completed: ${(completionDate != null) ? completionDate.toLocaleDateString() : "hacker"}</span>`)
+        }
+      }
+    }
   }
 
   get getMiddle() {
@@ -236,10 +255,8 @@ class MCAdvancementView extends HTMLElement {
     return advancementElement;
   }
 
-  //Optimize:false is to render coords list every time
-  //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
   //clean this up
-  private generateUnderlaySVG(category: AdvancementCategory, optimise: boolean) {
+  private generateUnderlaySVG(category: AdvancementCategory) {
     const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgEle.style.position = "absolute";
     svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
@@ -301,11 +318,12 @@ class MCAdvancementView extends HTMLElement {
       this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
       this.style.backgroundSize = `${String(16*pixelSize)}px`;
       this.style.padding = `${String(2*pixelSize)}px`;
+
       const advancementView = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementView);
       const cachedSVGEle = this.cachedSVGs[category as AdvancementCategory];
       if (cachedSVGEle == null) {
-        const svgEle = this.generateUnderlaySVG(category as AdvancementCategory,false);
+        const svgEle = this.generateUnderlaySVG(category as AdvancementCategory);
         this.insertBefore(svgEle,this.querySelector("mc-advancement-view>div"));
         this.cachedSVGs[category as AdvancementCategory] = svgEle
       } else {
@@ -316,9 +334,7 @@ class MCAdvancementView extends HTMLElement {
 
   //When element is added to DOM
   connectedCallback() {
-    if (this.firstTime)
-      this.firstTime = false;
-    console.log("connectedCallback");
+    if (this.firstTime) {this.firstTime = false};
 
     const viewStyle = document.createElement("style");
     viewStyle.innerHTML = this.advancementStyling;
@@ -332,7 +348,6 @@ class MCAdvancementView extends HTMLElement {
 
   //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
   attributeChangedCallback(name: string, _: never, newValue: string) {
-    console.log("attributeChangedCallback");
     if (name == "category" && !this.firstTime) {
       const category = newValue;
       this.updateElement(category);
@@ -670,7 +685,7 @@ class MCTooltipFancy extends HTMLElement {
   private titleDiv = document.createElement("div");
   private descriptionDiv = document.createElement("div");
   private detailsDiv = document.createElement("div");
-  private detailsDivContent: string | any = "Sample Details";
+  private detailsDivContent: string | HTMLElement = "Sample Details";
   private storedParent: HTMLElement | null = null;
   private storedParentInitialZIndex: string = "";
   private storedParentInitialPosition: string = "";
@@ -681,16 +696,18 @@ class MCTooltipFancy extends HTMLElement {
 
   // Needed for attributeChangedCallback
   static get observedAttributes() {
-    return ["done","category"];
+    return ["done","type"];
   }
 
-  set titleText(text: string) {this.titleDiv.innerText = text}
-  set descriptionText(text: string) {this.descriptionDiv.innerText = text}
-  set detailsContent(contents: string | any) {this.detailsDivContent = contents}
+  set setTitleText(text: string) {this.titleDiv.innerText = text}
+  set setDescriptionText(text: string) {this.descriptionDiv.innerText = text}
+  set setDetailsContent(contents: string | HTMLElement) {this.detailsDivContent = contents}
+  get getDetailsContent() {return this.detailsDivContent}
+  get getDetailsDiv() {return this.detailsDiv}
 
   private updateSelf() {
     const doneValue = this.getAttribute("done");
-    const cateValue = this.getAttribute("category");
+    const cateValue = this.getAttribute("type");
     if (doneValue != null) { this.headerDiv.setAttribute("done",""); } else { this.headerDiv.removeAttribute("done"); }
     if (cateValue == "challenge") { this.descriptionDiv.setAttribute("challenge",""); } else { this.descriptionDiv.removeAttribute("challenge"); }
   }
@@ -742,18 +759,20 @@ class MCTooltipFancy extends HTMLElement {
     super();
     const styleEle = document.createElement("style");
     const parentDiv = document.createElement("div");
+
     parentDiv.id = "parent"
     this.headerDiv.id = "header";
     this.titleDiv.id = "title";
     this.descriptionDiv.id = "description";
     this.detailsDiv.id = "details"
     styleEle.textContent = this.styling;
+
     this.headerDiv.append(this.titleDiv);
     parentDiv.append(this.headerDiv,this.descriptionDiv,this.detailsDiv);
     this.shadow.append(styleEle,parentDiv);
 
-    this.titleText = "Sample Title";
-    this.descriptionText = "Sample Description";
+    this.setTitleText = "Sample Title";
+    this.setDescriptionText = "Sample Description";
     this.closeDetails();
   }
 
@@ -835,7 +854,21 @@ class MCTooltipFancy extends HTMLElement {
       padding: ${String(4*pixelSize)}px ${String(2*pixelSize)}px ${String(2*pixelSize)}px;
     }
 
-    li["done"] {
+    ul {
+      list-style-type: none;
+      margin: 0px;
+      padding: 0px;
+    }
+
+    ul>li {
+      text-indent: ${String(3*pixelSize)}px
+    }
+
+    ul>li:before {
+      content: "-";
+    }
+
+    li[done] {
       color: #55FFFF;
     }
   `
