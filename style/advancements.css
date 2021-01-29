@@ -1,13 +1,13 @@
+body {
+  width: 1064px;
+}
+
 mc-advancement-gui {
   display: block;
   margin: 0 auto;
   font-size: 1.5rem;
   width: 100%;
   margin-bottom: 8px;
-}
-
-body {
-  width: 1064px;
 }
 
 mc-advancement-gui mc-advancement-view {

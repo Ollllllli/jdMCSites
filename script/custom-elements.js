@@ -2141,6 +2141,11 @@ class MCAdvancementView extends HTMLElement {
     advancementStyling = `\n    mc-advancement {\n      display: inline-block;\n      padding: 20px;\n      background-size: cover;\n      background-image: url(./img/gui/advancement-normal.png);\n      position: relative;\n    }\n\n    mc-advancement[type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge.png);\n    }\n\n    mc-advancement[type="goal"] {\n      background-image: url(./img/gui/advancement-goal.png);\n    }\n\n    mc-advancement[done="true"] {\n      background-image: url(./img/gui/advancement-normal-done.png);\n    }\n\n    mc-advancement[done="true"][type="goal"] {\n      background-image: url(./img/gui/advancement-goal-done.png);\n    }\n\n    mc-advancement[done="true"][type="challenge"] {\n      background-image: url(./img/gui/advancement-challenge-done.png);\n    }\n\n    mc-advancement-view>div {\n      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));\n      position: relative;\n      z-index: 0;\n    }\n  `;
     svgStyling = `\n    line, polyline {\n      stroke-linecap: square;\n      stroke-linejoin: miter;\n      fill: none;\n    }\n\n    line#black, polyline#black {\n      stroke: rgb(0,0,0);\n      stroke-width: ${String(3 * pixelSize)};\n    }\n\n    line#white, polyline#white {\n      stroke: rgb(255,255,255);\n      stroke-width: ${String(pixelSize)};\n    }\n  `;
 }
+//
+//
+// MC ITEM ICON
+//
+//
 const webRoot = `${document.currentScript.src}/../../`;
 const currentResourcePack = "vanilla";
 function namespacedResource(pack, section, namespacedId, extension) {
@@ -2151,11 +2156,6 @@ function namespacedResource(pack, section, namespacedId, extension) {
     ];
     return `${webRoot}resourcepacks/${pack}/assets/${namespaceSplit[0]}/${section}/${namespaceSplit[1]}.${extension}`;
 }
-//
-//
-// MC ITEM ICON
-//
-//
 const __jsonModelCache = new OnceCache();
 const __modelCache = new OnceCache();
 class MCItemIcon extends HTMLElement {
