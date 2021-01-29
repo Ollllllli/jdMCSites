@@ -2166,7 +2166,7 @@ class MCItemIcon extends HTMLElement {
         ];
     }
     shadow = this.attachShadow({
-        mode: "closed"
+        mode: "open"
     });
     renderer = document.createElement("css-renderer");
     innerStyle = document.createElement("style");
@@ -2252,8 +2252,11 @@ class MCItemIcon extends HTMLElement {
         super();
         this.shadow.append(this.innerStyle, this.renderer);
     }
+    connectedCallback() {
+        this.attributeChangedCallback();
+    }
     // need to cache merged model maybe for when update() is called
-    async update() {
+    async attributeChangedCallback() {
         if (this.isUpdating) return;
         this.isUpdating = true;
         const modelAttr = this.getAttribute("model");
@@ -2261,6 +2264,7 @@ class MCItemIcon extends HTMLElement {
         this.style.display = "block";
         this.style.width = "100%";
         this.style.height = "100%";
+        this.style.position = "relative";
         // const res = parseFloat(this.getAttribute("res") || "20");
         // font size can be set to be this inner height
         this.innerStyle.textContent = `css-renderer{font-size:${this.clientHeight || 64}px;}`;
@@ -2351,6 +2355,10 @@ class MCItemIcon extends HTMLElement {
                 this.renderer.rootOrigin.insertAdjacentHTML("beforeend", ele);
             }
         }
+        for (const ele of this.renderer.rootOrigin.querySelectorAll("css-renderer-plane")){
+            ele.overlay = this.hasAttribute("enchanted") ? "../resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png" : null;
+            ele.overlayStyle = "css-renderer-overlay {" + "mix-blend-mode: screen;" + "background-size: 400%;" + "animation: 20s linear infinite enchantGlint;" + "}" + "@keyframes enchantGlint {" + "from { background-position: 0% 0% }" + "to { background-position: 400% 400% }" + "}";
+        }
         this.isUpdating = false;
     }
     // provide default model
@@ -2414,12 +2422,6 @@ class MCItemIcon extends HTMLElement {
         const texture = await loadUrl(textureFilename);
         if (texture !== null) return textureFilename;
         else return fallbackTextureFilename;
-    }
-    connectedCallback() {
-        this.update();
-    }
-    attributeChangedCallback() {
-        this.update();
     }
 }
 //

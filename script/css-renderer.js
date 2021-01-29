@@ -59,7 +59,9 @@ class CSSRPlane extends HTMLElement {
             "bg",
             "uv",
             "face",
-            "brightness"
+            "brightness",
+            "overlay",
+            "overlay-style"
         ];
     }
     props = {
@@ -76,8 +78,12 @@ class CSSRPlane extends HTMLElement {
             16,
             16
         ],
-        face: "north"
+        face: "north",
+        overlay: null,
+        overlayStyle: ""
     };
+    overlayElement = document.createElement("css-renderer-overlay");
+    overlayStyleElement = document.createElement("style");
     get w() {
         return this.props.w;
     }
@@ -104,6 +110,12 @@ class CSSRPlane extends HTMLElement {
     }
     get brightness() {
         return this.props.brightness;
+    }
+    get overlay() {
+        return this.props.overlay;
+    }
+    get overlayStyle() {
+        return this.props.overlayStyle;
     }
     set w(val) {
         this.setAttribute("w", String(val));
@@ -132,11 +144,20 @@ class CSSRPlane extends HTMLElement {
     set brightness(val) {
         this.setAttribute("brightness", String(val));
     }
+    set overlay(val) {
+        this.setAttribute("overlay", val || "");
+    }
+    set overlayStyle(val) {
+        this.setAttribute("overlay-style", val);
+    }
     connectedCallback() {
         this.style.display = "inline-block";
         this.style.backgroundSize = "cover";
         this.style.transformOrigin = "0% 100%";
         this.style.bottom = "0";
+        if (!this.contains(this.overlayElement)) {
+            this.append(this.overlayStyleElement, this.overlayElement);
+        }
     }
     async attributeChangedCallback(attr, _, attrValue) {
         if (attr == "w") this.props.w = parseFloat(attrValue || "16");
@@ -170,6 +191,10 @@ class CSSRPlane extends HTMLElement {
                     this.props.bg = bgAttr;
                 }
             }
+        } else if (attr == "overlay") {
+            this.props.overlay = attrValue || null;
+        } else if (attr == "overlay-style") {
+            this.props.overlayStyle = attrValue || "";
         }
         let transform = "";
         transform += "translate3d(";
@@ -195,6 +220,22 @@ class CSSRPlane extends HTMLElement {
         } else {
             this.style.filter = `brightness(${this.brightness})`;
             this.style.backgroundBlendMode = "multiply";
+        }
+        this.overlayStyleElement.textContent = this.overlayStyle;
+        this.overlayElement.style.webkitMaskSize = "cover";
+        this.overlayElement.style.maskSize = "cover";
+        this.overlayElement.style.width = "100%";
+        this.overlayElement.style.height = "100%";
+        this.overlayElement.style.top = "0";
+        this.overlayElement.style.left = "0";
+        if (this.overlay) {
+            this.overlayElement.style.backgroundImage = `url(${this.overlay})`;
+            this.overlayElement.style.webkitMaskImage = `url(${this.bg})`;
+            this.overlayElement.style.maskImage = `url(${this.bg})`;
+        } else {
+            this.overlayElement.style.backgroundImage = "";
+            this.overlayElement.style.webkitMaskImage = "";
+            this.overlayElement.style.maskImage = "";
         }
     }
 }
@@ -253,7 +294,7 @@ class CSSRElement extends HTMLElement {
             "eastuv",
             "westuv",
             "upuv",
-            "downuv", 
+            "downuv"
         ];
     }
     //shadowRoot = this.attachShadow({mode: "open"});
@@ -489,12 +530,12 @@ class CSSRElement extends HTMLElement {
             this.upFace.brightness = 1;
             this.downFace.brightness = 1;
         } else {
-            this.northFace.brightness = 11 / 15;
-            this.southFace.brightness = 11 / 15;
-            this.eastFace.brightness = 9 / 15;
-            this.westFace.brightness = 9 / 15;
-            this.upFace.brightness = 15 / 15;
-            this.downFace.brightness = 7 / 15;
+            this.northFace.brightness = 0.5;
+            this.southFace.brightness = 0.5;
+            this.eastFace.brightness = 0.7;
+            this.westFace.brightness = 0.7;
+            this.upFace.brightness = 1;
+            this.downFace.brightness = 0.4;
         }
         if (this.to[0] - this.from[0] > 0 && this.to[1] - this.from[1]) {
             this.northFace.w = this.to[0] - this.from[0];
@@ -615,7 +656,7 @@ class CSSRenderer extends HTMLElement {
         this.style.position = "relative";
         this.style.width = `${width}px`;
         this.style.height = `${height}px`;
-        this.internalStyle.textContent = `\n      css-renderer-wrapper * { transform-style: preserve-3d; position: absolute; }\n\n      /* used to rotate whole model around centre, and to hold unit variable */\n      css-renderer-wrapper {\n        --unit: ${unit}px;\n        position: absolute;\n        top: 50%; left: 50%;\n        width: 0; height: 0;\n        transform:\n          scaleX(${scaleComponents[0]})\n          scaleY(${scaleComponents[1]})\n          scaleZ(${scaleComponents[2]})\n          rotateX(${-1 * rotateComponents[0]}deg)\n          rotateY(${-1 * rotateComponents[1]}deg)\n          rotateZ(${-1 * rotateComponents[2]}deg)\n          translateX(calc(var(--unit)*${translateComponents[0]}))\n          translateY(calc(var(--unit)*${-translateComponents[1]}))\n          translateZ(calc(var(--unit)*${translateComponents[2]}))\n          ;\n        transform-style: preserve-3d;\n      }\n      css-renderer-plane {\n        image-rendering: -moz-crisp-edges;\n        image-rendering: -webkit-crisp-edges;\n        image-rendering: pixelated;\n        image-rendering: crisp-edges;\n        backface-visibility: hidden;\n      }\n    `;
+        this.internalStyle.textContent = `\n      css-renderer-wrapper * { transform-style: preserve-3d; position: absolute; }\n\n      /* used to rotate whole model around centre, and to hold unit variable */\n      css-renderer-wrapper {\n        --unit: ${unit}px;\n        position: absolute;\n        top: 50%; left: 50%;\n        width: 0; height: 0;\n        transform:\n          scaleX(${scaleComponents[0]})\n          scaleY(${scaleComponents[1]})\n          scaleZ(${scaleComponents[2]})\n          rotateX(${-1 * rotateComponents[0]}deg)\n          rotateY(${rotateComponents[1]}deg)\n          rotateZ(${-1 * rotateComponents[2]}deg)\n          translateX(calc(var(--unit)*${translateComponents[0]}))\n          translateY(calc(var(--unit)*${-translateComponents[1]}))\n          translateZ(calc(var(--unit)*${translateComponents[2]}))\n          ;\n        transform-style: preserve-3d;\n      }\n      css-renderer-plane {\n        image-rendering: -moz-crisp-edges;\n        image-rendering: -webkit-crisp-edges;\n        image-rendering: pixelated;\n        image-rendering: crisp-edges;\n        backface-visibility: hidden;\n      }\n    `;
     }
 }
 customElements.define("css-renderer", CSSRenderer);

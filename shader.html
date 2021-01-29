@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+
+  </style>
+</head>
+<body>
+  <label>Image URL</label><br>
+  <input type="text" size="64" value="/resourcepacks/vanilla/assets/minecraft/textures/misc/enchanted_item_glint.png"><br>
+  <br>
+  <label>Shader Code</label><br>
+  <code>&emsp;in:<br>&emsp;&emsp;vec2 coord<br>&emsp;out:<br>&emsp;&emsp;vec4 colour</code><br>
+  <textarea cols="64" rows="16"></textarea><br>
+  <br>
+  <label>Output</label><br>
+  <canvas style="border:1px solid black;"></canvas>
+  <script>
+    const imageURLInput = document.querySelector("input");
+    const shaderCodeInput = document.querySelector("textarea");
+    const cnv = document.querySelector("canvas");
+    const ctx = cnv.getContext("2d");
+    const img = new Image();
+    async function runShader() {
+      img.src = imageURLInput.value;
+      await img.decode();
+      cnv.width = img.width;
+      cnv.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      try {
+        const shader = new Function("coord", "colour", shaderCodeInput.value);
+        for (let y=0; y<imageData.height; y++) {
+          for (let x=0; x<imageData.width; x++) {
+            const u = x / (img.width - 1);
+            const v = y / (img.height - 1);
+            const coord = [u,v];
+            const colour = imageData.data.subarray(4*(y*imageData.width+x), 4*(y*imageData.width+x)+4);
+            shader(coord, colour);
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+      } catch (e) {}
+    }
+    window.onload = runShader;
+    shaderCodeInput.addEventListener("input", runShader);
+  </script>
+</body>
+</html>
