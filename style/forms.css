@@ -5,10 +5,11 @@
   z-index: 10;
 }
 .content-wrapper {
-  border-image: url(../img/gui/advancement-normal.png) 20% fill;
+  border-image: url(../img/gui/gui-wrapper.png) 4 fill;
   border-width: 16px;
   border-style: solid;
 }
+
 select {
   position: absolute;
   right: 0;

@@ -34,7 +34,15 @@ function generateSelect(keyValue: [optionValue: string, optionLabel: string][]) 
 //   attributeChangedCallback() { this.updateAttributes() }
 // }
 
-type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: ["item"|"block", string, "enchanted"?] } }
+//
+//
+// MC ADVANCEMENT
+//
+//
+
+// template = {"title":"","desc":"","icon":{"type":"","name":"","ench":False},"criteria":[]}
+type AdvancementIconMap = { [category in AdvancementCategory]: { [advancementName: string]: { "title": string, "desc": string, "icon": { "type": "block"|"item", "name": string, "ench": boolean }, "criteria": string[] } } }
+const pixelSize = 4;
 
 class MCAdvancement extends HTMLElement {
   
@@ -45,7 +53,7 @@ class MCAdvancement extends HTMLElement {
     return MCAdvancement.advancementAttributes;
   }
 
-  shadow = this.attachShadow({mode: 'closed'});
+  //shadow = this.attachShadow({mode: 'closed'}); removed as it doesnt allow sibling elements
   savedAttributes: Record<typeof MCAdvancement.advancementAttributes[number], string | null> = {
     col: null,
     row: null,
@@ -53,30 +61,90 @@ class MCAdvancement extends HTMLElement {
     done: "false",
     type: "normal",
   };
+  savedTooltip: MCTooltipFancy | null = null;
+  currentlyIconed = false;
 
   constructor() {
     super();
   }
 
   private updateElement(attribute: typeof MCAdvancement.advancementAttributes[number]) {
-    //only fires if the attribute not null, meaning only set attributes are used
-    if (this.savedAttributes[attribute] !== null) {
-      switch (attribute) {
-        case 'col':
-        case 'row':
+    switch (attribute) {
+      case 'col':
+      case 'row':
+        if (this.savedAttributes[attribute] == null) {
+          this.style.gridArea = "";
+        } else {
           this.style.gridArea = `${this.savedAttributes.row}/${this.savedAttributes.col}/${String(Number(this.savedAttributes.row)+2)}/${String(Number(this.savedAttributes.col)+2)}`;
-          break;
-        case 'ns':
-          //For typescript as savedAttributes['ns'] is string|null
-          if (this.savedAttributes['ns']) {
-            const nsSplit = (this.savedAttributes['ns']).split("/");
-            if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0] as AdvancementCategory]) {
-              const mappedArray = this.advancementIcons[nsSplit[0] as AdvancementCategory][nsSplit[1]];
-              const enchanted = (mappedArray.includes("enchanted")) ? " enchanted" : "";
-              this.shadow.innerHTML = `<mc-item-icon model="${mappedArray[0]}/${mappedArray[1]}"${enchanted}></mc-item-icon>`;
+        }
+        break;
+      case 'ns':
+        //For typescript as savedAttributes['ns'] is string|null
+        if (this.savedAttributes['ns'] != null) {
+          const nsSplit = (this.savedAttributes['ns']).split("/");
+          if (nsSplit.length == 2 && nsSplit[0] in this.advancementIcons && nsSplit[1] in this.advancementIcons[nsSplit[0] as AdvancementCategory]) {
+            const enchMap = this.advancementIcons[nsSplit[0] as AdvancementCategory][nsSplit[1]];
+            const enchanted = (enchMap.icon.ench == true) ? " enchanted" : "";
+            if (this.currentlyIconed == false) {
+              this.insertAdjacentHTML("afterbegin",`<mc-item-icon model="${enchMap.icon.type}/${enchMap.icon.name}"${enchanted}></mc-item-icon>`);
+              this.currentlyIconed = true;
             }
+            if (this.savedTooltip == null) {
+              this.savedTooltip = new MCTooltipFancy();
+              this.insertAdjacentElement("afterbegin",this.savedTooltip);
+            }
+            this.savedTooltip.setTitleText = enchMap.title;
+            this.savedTooltip.setDescriptionText = enchMap.desc;
+            const criteriaList = document.createElement("ul");
+            for (const criterion of enchMap.criteria) {
+              const criterionReadable = criterion.replaceAll("_"," ").replaceAll("minecraft:","").replaceAll("textures/entity/cat/","").replaceAll(".png","");
+              criteriaList.insertAdjacentHTML("beforeend",`<li id="${criterion}">${criterionReadable}</li>`);
+            }
+            this.savedTooltip.setDetailsContent = criteriaList;
+          } else {
+            this.querySelector("mc-item-icon")?.remove();
+            this.currentlyIconed = false;
+            this.savedTooltip?.remove();
           }
-          break;
+        }
+        break;
+      case 'type':
+        if (this.savedTooltip != null) {
+          if (this.savedAttributes.type == "challenge") {
+            this.savedTooltip.setAttribute("type","challenge");
+          } else {
+            this.savedTooltip.removeAttribute("type");
+          }
+        }
+        break;
+      case 'done':
+        if (this.savedTooltip != null) {
+          if (this.savedAttributes.done == "true") {
+            this.savedTooltip.setAttribute("done","");
+          } else {
+            this.savedTooltip.removeAttribute("done");
+          }
+        }
+        break;
+      }
+  }
+
+  updateCriteria(advDetails: {done: boolean, criteria: {[predicate: string]: Date;}}, completionDate: Date | null) {
+    if (this.savedTooltip != null) {
+      const criteriaListEle = this.savedTooltip.getDetailsContent;
+      if (criteriaListEle instanceof HTMLUListElement) {
+        const oldCompletionDate = criteriaListEle.querySelector("span#completionDate");
+        console.log(criteriaListEle);
+        if (oldCompletionDate != null) {oldCompletionDate.remove()}
+        for (const criterionLI of criteriaListEle.querySelectorAll("li")) {
+          criterionLI.removeAttribute("done");
+          if (criterionLI.id in advDetails.criteria) {
+            criterionLI.setAttribute("done","");
+          }
+        }
+        if (advDetails.done == true) {
+          criteriaListEle.insertAdjacentHTML("afterbegin",`<span id="completionDate">Completed: ${(completionDate != null) ? completionDate.toLocaleDateString() : "hacker"}</span>`)
+        }
       }
     }
   }
@@ -109,14 +177,20 @@ class MCAdvancement extends HTMLElement {
     this.updateElement(name);
   }
 
-  private advancementIcons: AdvancementIconMap = {
-    story: {root: ["block","grass_block"], mine_stone: ["item","wooden_pickaxe"], upgrade_tools: ["item","stone_pickaxe"], smelt_iron: ["item","iron_ingot"], obtain_armor: ["item","iron_chestplate"], lava_bucket: ["item","lava_bucket"], iron_tools: ["item","iron_pickaxe"], deflect_arrow: ["item","shield"], form_obsidian: ["block","obsidian"], mine_diamond: ["item","diamond"], enter_the_nether: ["item","flint_and_steel"], shiny_gear: ["item","diamond_chestplate"], enchant_item: ["item","enchanted_book","enchanted"], cure_zombie_villager: ["item","golden_apple"], follow_ender_eye: ["item","ender_eye"], enter_the_end: ["block","end_stone"]},
-    nether: {root: ["block","red_nether_bricks"], return_to_sender: ["item","fire_charge"], find_bastion: ["block","polished_blackstone_bricks"], obtain_ancient_debris: ["block","ancient_debris"], fast_travel: ["item", "map"], find_fortress: ["block", "nether_bricks"], obtain_crying_obsidian: ["block","crying_obsidian"], distract_piglin: ["item","gold_ingot"], ride_strider: ["item","warped_fungus_on_a_stick"], uneasy_alliance: ["item","ghast_tear"], loot_bastion: ["block","chest"], use_lodestone: ["block","lodestone"], netherite_armor: ["item","netherite_chestplate"], get_wither_skull: ["block","wither_skeleton_skull"], obtain_blaze_rod: ["item","blaze_rod"], charge_respawn_anchor: ["block","respawn_anchor_0"], explore_nether: ["item","netherite_boots"], summon_wither: ["item","nether_star","enchanted"], brew_potion: ["item","uncraftable_potion"], create_beacon: ["block","beacon"], all_potions: ["item","milk_bucket"], create_full_beacon: ["block","beacon"], all_effects: ["item","bucket"]},
-    end: {root: ["block","end_stone"], kill_dragon: ["block","dragon_head"], dragon_egg: ["block","dragon_egg"], enter_end_gateway: ["item","ender_pearl"], respawn_dragon: ["item","end_crystal","enchanted"], dragon_breath: ["item","dragon_breath"], find_end_city: ["block","purpur_block"], elytra: ["item","elytra"], levitate: ["item","shulker_shell"]},
-    adventure: {root: ["item","map"], voluntary_exile: ["block","ominous_banner"], kill_a_mob: ["item","iron_sword"], trade: ["item","emerald"], honey_block_slide: ["block","honey_block"], ol_betsy: ["item","crossbow"], sleep_in_bed: ["block","red_bed"], hero_of_the_village: ["block","ominous_banner"], throw_trident: ["item","trident"], shoot_arrow: ["item", "bow"], kill_all_mobs: ["item","diamond_sword"], totem_of_undying: ["item","totem_of_undying"], summon_iron_golem: ["block","carved_pumpkin"], two_birds_one_arrow: ["item","crossbow"], whos_the_pillager_now: ["item","crossbow"], arbalistic: ["item","crossbow"], adventuring_time: ["item","diamond_boots"], very_very_frightening: ["item","trident"], sniper_duel: ["item","arrow"], bullseye: ["block","target"]},
-    husbandry: {root: ["block","hay_block"], safely_harvest_honey: ["item","honey_bottle"], breed_an_animal: ["item","wheat"], tame_an_animal: ["item","lead"], fishy_business: ["item","fishing_rod"], silk_touch_nest: ["block","bee_nest"], plant_seed: ["item","wheat"], bred_all_animals: ["item","golden_carrot"], complete_catalogue: ["item","cod"], tactical_fishing: ["item","pufferfish_bucket"], balanced_diet: ["item","apple"], obtain_netherite_hoe: ["item","netherite_hoe"]},
+  private readonly advancementIcons: AdvancementIconMap = {
+    "story": {"root": {"title": "Minecraft", "desc": "The heart and story of the game", "icon": {"type": "block", "name": "grass_block", "ench": false}, "criteria": ["crafting_table"]}, "mine_stone": {"title": "Stone Age", "desc": "Mine stone with your new pickaxe", "icon": {"type": "item", "name": "wooden_pickaxe", "ench": false}, "criteria": ["get_stone"]}, "upgrade_tools": {"title": "Getting an Upgrade", "desc": "Construct a better pickaxe", "icon": {"type": "item", "name": "stone_pickaxe", "ench": false}, "criteria": ["stone_pickaxe"]}, "smelt_iron": {"title": "Acquire Hardware", "desc": "Smelt an iron ingot", "icon": {"type": "item", "name": "iron_ingot", "ench": false}, "criteria": ["iron"]}, "obtain_armor": {"title": "Suit Up", "desc": "Protect yourself with a piece of iron armor", "icon": {"type": "item", "name": "iron_chestplate", "ench": false}, "criteria": ["iron_boots", "iron_chestplate", "iron_helmet", "iron_leggings"]}, "lava_bucket": {"title": "Hot Stuff", "desc": "Fill a bucket with lava", "icon": {"type": "item", "name": "lava_bucket", "ench": false}, "criteria": ["lava_bucket"]}, "iron_tools": {"title": "Isn't It Iron Pick", "desc": "Upgrade your pickaxe", "icon": {"type": "item", "name": "iron_pickaxe", "ench": false}, "criteria": ["iron_pickaxe"]}, "deflect_arrow": {"title": "Not Today, Thank You", "desc": "Deflect a projectile with a shield", "icon": {"type": "item", "name": "shield", "ench": false}, "criteria": ["deflected_projectile"]}, "form_obsidian": {"title": "Ice Bucket Challenge", "desc": "Obtain a block of obsidian", "icon": {"type": "block", "name": "obsidian", "ench": false}, "criteria": ["obsidian"]}, "mine_diamond": {"title": "Diamonds!", "desc": "Acquire diamonds", "icon": {"type": "item", "name": "diamond", "ench": false}, "criteria": ["diamond"]}, "enter_the_nether": {"title": "We Need to Go Deeper", "desc": "Build, light and enter a Nether Portal", "icon": {"type": "item", "name": "flint_and_steel", "ench": false}, "criteria": ["entered_nether"]}, "shiny_gear": {"title": "Cover Me With Diamonds", "desc": "Diamond armor saves lives", "icon": {"type": "item", "name": "diamond_chestplate", "ench": false}, "criteria": ["diamond_boots", "diamond_chestplate", "diamond_helmet", "diamond_leggings"]}, "enchant_item": {"title": "Enchanter", "desc": "Enchant an item at an Enchanting Table", "icon": {"type": "item", "name": "enchanted_book", "ench": true}, "criteria": ["enchanted_item"]}, "cure_zombie_villager": {"title": "Zombie Doctor", "desc": "Weaken and then cure a Zombie Villager", "icon": {"type": "item", "name": "golden_apple", "ench": false}, "criteria": ["cured_zombie"]}, "follow_ender_eye": {"title": "Eye Spy", "desc": "Follow an Eye of Ender", "icon": {"type": "item", "name": "ender_eye", "ench": false}, "criteria": ["in_stronghold"]}, "enter_the_end": {"title": "The End?", "desc": "Enter the End Portal", "icon": {"type": "block", "name": "end_stone", "ench": false}, "criteria": ["entered_end"]}}, 
+    "nether": {"root": {"title": "Nether", "desc": "Bring summer clothes", "icon": {"type": "block", "name": "red_nether_bricks", "ench": false}, "criteria": ["entered_nether"]}, "return_to_sender": {"title": "Return to Sender", "desc": "Destroy a Ghast with a fireball", "icon": {"type": "item", "name": "fire_charge", "ench": false}, "criteria": ["killed_ghast"]}, "find_bastion": {"title": "Those Were the Days", "desc": "Enter a Bastion Remnant", "icon": {"type": "block", "name": "polished_blackstone_bricks", "ench": false}, "criteria": ["bastion"]}, "obtain_ancient_debris": {"title": "Hidden in the Depths", "desc": "Obtain Ancient Debris", "icon": {"type": "block", "name": "ancient_debris", "ench": false}, "criteria": ["ancient_debris"]}, "fast_travel": {"title": "Subspace Bubble", "desc": "Use the Nether to travel 7 km in the Overworld", "icon": {"type": "item", "name": "map", "ench": false}, "criteria": ["travelled"]}, "find_fortress": {"title": "A Terrible Fortress", "desc": "Break your way into a Nether Fortress", "icon": {"type": "block", "name": "nether_bricks", "ench": false}, "criteria": ["fortress"]}, "obtain_crying_obsidian": {"title": "Who is Cutting Onions?", "desc": "Obtain Crying Obsidian", "icon": {"type": "block", "name": "crying_obsidian", "ench": false}, "criteria": ["crying_obsidian"]}, "distract_piglin": {"title": "Oh Shiny", "desc": "Distract Piglins with gold", "icon": {"type": "item", "name": "gold_ingot", "ench": false}, "criteria": ["distract_piglin", "distract_piglin_directly"]}, "ride_strider": {"title": "This Boat Has Legs", "desc": "Ride a Strider with a Warped Fungus on a Stick", "icon": {"type": "item", "name": "warped_fungus_on_a_stick", "ench": false}, "criteria": ["used_warped_fungus_on_a_stick"]}, "uneasy_alliance": {"title": "Uneasy Alliance", "desc": "Rescue a Ghast from the Nether, bring it safely home to the Overworld... and then kill it", "icon": {"type": "item", "name": "ghast_tear", "ench": false}, "criteria": ["killed_ghast"]}, "loot_bastion": {"title": "War Pigs", "desc": "Loot a chest in a Bastion Remnant", "icon": {"type": "block", "name": "chest", "ench": false}, "criteria": ["loot_bastion_bridge", "loot_bastion_hoglin_stable", "loot_bastion_other", "loot_bastion_treasure"]}, "use_lodestone": {"title": "Country Lode, Take Me Home", "desc": "Use a compass on a Lodestone", "icon": {"type": "block", "name": "lodestone", "ench": false}, "criteria": ["use_lodestone"]}, "netherite_armor": {"title": "Cover Me in Debris", "desc": "Get a full suit of Netherite armor", "icon": {"type": "item", "name": "netherite_chestplate", "ench": false}, "criteria": ["netherite_armor"]}, "get_wither_skull": {"title": "Spooky Scary Skeleton", "desc": "Obtain a Wither Skeleton's skull", "icon": {"type": "block", "name": "wither_skeleton_skull", "ench": false}, "criteria": ["wither_skull"]}, "obtain_blaze_rod": {"title": "Into Fire", "desc": "Relieve a Blaze of its rod", "icon": {"type": "item", "name": "blaze_rod", "ench": false}, "criteria": ["blaze_rod"]}, "charge_respawn_anchor": {"title": "Not Quite \"Nine\" Lives", "desc": "Charge a Respawn Anchor to the maximum", "icon": {"type": "block", "name": "respawn_anchor_0", "ench": false}, "criteria": ["charge_respawn_anchor"]}, "explore_nether": {"title": "Hot Tourist Destinations", "desc": "Explore all Nether biomes", "icon": {"type": "item", "name": "netherite_boots", "ench": false}, "criteria": ["minecraft:basalt_deltas", "minecraft:crimson_forest", "minecraft:nether_wastes", "minecraft:soul_sand_valley", "minecraft:warped_forest"]}, "summon_wither": {"title": "Withering Heights", "desc": "Summon the Wither", "icon": {"type": "item", "name": "nether_star", "ench": true}, "criteria": ["summoned"]}, "brew_potion": {"title": "Local Brewery", "desc": "Brew a potion", "icon": {"type": "item", "name": "uncraftable_potion", "ench": false}, "criteria": ["potion"]}, "create_beacon": {"title": "Bring Home the Beacon", "desc": "Construct and place a beacon", "icon": {"type": "block", "name": "beacon", "ench": false}, "criteria": ["beacon"]}, "all_potions": {"title": "A Furious Cocktail", "desc": "Have every potion effect applied at the same time", "icon": {"type": "item", "name": "milk_bucket", "ench": false}, "criteria": ["all_effects"]}, "create_full_beacon": {"title": "Beaconator", "desc": "Bring a beacon to full power", "icon": {"type": "block", "name": "beacon", "ench": false}, "criteria": ["beacon"]}, "all_effects": {"title": "How Did We Get Here?", "desc": "Have every effect applied at the same time", "icon": {"type": "item", "name": "bucket", "ench": false}, "criteria": ["all_effects"]}}, 
+    "end": {"root": {"title": "The End", "desc": "Or the beginning?", "icon": {"type": "block", "name": "end_stone", "ench": false}, "criteria": ["entered_end"]}, "kill_dragon": {"title": "Free the End", "desc": "Good luck", "icon": {"type": "block", "name": "dragon_head", "ench": false}, "criteria": ["killed_dragon"]}, "dragon_egg": {"title": "The Next Generation", "desc": "Hold the Dragon Egg", "icon": {"type": "block", "name": "dragon_egg", "ench": false}, "criteria": ["dragon_egg"]}, "enter_end_gateway": {"title": "Remote Getaway", "desc": "Escape the island", "icon": {"type": "item", "name": "ender_pearl", "ench": false}, "criteria": ["entered_end_gateway"]}, "respawn_dragon": {"title": "The End... Again...", "desc": "Respawn the Ender Dragon", "icon": {"type": "item", "name": "end_crystal", "ench": true}, "criteria": ["summoned_dragon"]}, "dragon_breath": {"title": "You Need a Mint", "desc": "Collect dragon's breath in a glass bottle", "icon": {"type": "item", "name": "dragon_breath", "ench": false}, "criteria": ["dragon_breath"]}, "find_end_city": {"title": "The City at the End of the Game", "desc": "Go on in, what could happen?", "icon": {"type": "block", "name": "purpur_block", "ench": false}, "criteria": ["in_city"]}, "elytra": {"title": "Sky's the Limit", "desc": "Find elytra", "icon": {"type": "item", "name": "elytra", "ench": false}, "criteria": ["elytra"]}, "levitate": {"title": "Great View From Up Here", "desc": "Levitate up 50 blocks from the attacks of a Shulker", "icon": {"type": "item", "name": "shulker_shell", "ench": false}, "criteria": ["levitated"]}}, 
+    "adventure": {"root": {"title": "Adventure", "desc": "Adventure, exploration and combat", "icon": {"type": "item", "name": "map", "ench": false}, "criteria": ["killed_by_something", "killed_something"]}, "voluntary_exile": {"title": "Voluntary Exile", "desc": "Kill a raid captain.\nMaybe consider staying away from villages for the time being...", "icon": {"type": "block", "name": "ominous_banner", "ench": false}, "criteria": ["voluntary_exile"]}, "kill_a_mob": {"title": "Monster Hunter", "desc": "Kill any hostile monster", "icon": {"type": "item", "name": "iron_sword", "ench": false}, "criteria": ["minecraft:blaze", "minecraft:cave_spider", "minecraft:creeper", "minecraft:drowned", "minecraft:elder_guardian", "minecraft:ender_dragon", "minecraft:enderman", "minecraft:endermite", "minecraft:evoker", "minecraft:ghast", "minecraft:guardian", "minecraft:hoglin", "minecraft:husk", "minecraft:magma_cube", "minecraft:phantom", "minecraft:piglin", "minecraft:piglin_brute", "minecraft:pillager", "minecraft:ravager", "minecraft:shulker", "minecraft:silverfish", "minecraft:skeleton", "minecraft:slime", "minecraft:spider", "minecraft:stray", "minecraft:vex", "minecraft:vindicator", "minecraft:witch", "minecraft:wither", "minecraft:wither_skeleton", "minecraft:zoglin", "minecraft:zombie", "minecraft:zombie_villager", "minecraft:zombified_piglin"]}, "trade": {"title": "What a Deal!", "desc": "Successfully trade with a Villager", "icon": {"type": "item", "name": "emerald", "ench": false}, "criteria": ["traded"]}, "honey_block_slide": {"title": "Sticky Situation", "desc": "Jump into a Honey Block to break your fall", "icon": {"type": "block", "name": "honey_block", "ench": false}, "criteria": ["honey_block_slide"]}, "ol_betsy": {"title": "Ol' Betsy", "desc": "Shoot a crossbow", "icon": {"type": "item", "name": "crossbow", "ench": false}, "criteria": ["shot_crossbow"]}, "sleep_in_bed": {"title": "Sweet Dreams", "desc": "Sleep in a bed to change your respawn point", "icon": {"type": "block", "name": "red_bed", "ench": false}, "criteria": ["slept_in_bed"]}, "hero_of_the_village": {"title": "Hero of the Village", "desc": "Successfully defend a village from a raid", "icon": {"type": "block", "name": "ominous_banner", "ench": false}, "criteria": ["hero_of_the_village"]}, "throw_trident": {"title": "A Throwaway Joke", "desc": "Throw a trident at something.\nNote: Throwing away your only weapon is not a good idea.", "icon": {"type": "item", "name": "trident", "ench": false}, "criteria": ["shot_trident"]}, "shoot_arrow": {"title": "Take Aim", "desc": "Shoot something with an arrow", "icon": {"type": "item", "name": "bow", "ench": false}, "criteria": ["shot_arrow"]}, "kill_all_mobs": {"title": "Monsters Hunted", "desc": "Kill one of every hostile monster", "icon": {"type": "item", "name": "diamond_sword", "ench": false}, "criteria": ["minecraft:blaze", "minecraft:cave_spider", "minecraft:creeper", "minecraft:drowned", "minecraft:elder_guardian", "minecraft:ender_dragon", "minecraft:enderman", "minecraft:endermite", "minecraft:evoker", "minecraft:ghast", "minecraft:guardian", "minecraft:hoglin", "minecraft:husk", "minecraft:magma_cube", "minecraft:phantom", "minecraft:piglin", "minecraft:piglin_brute", "minecraft:pillager", "minecraft:ravager", "minecraft:shulker", "minecraft:silverfish", "minecraft:skeleton", "minecraft:slime", "minecraft:spider", "minecraft:stray", "minecraft:vex", "minecraft:vindicator", "minecraft:witch", "minecraft:wither", "minecraft:wither_skeleton", "minecraft:zoglin", "minecraft:zombie", "minecraft:zombie_villager", "minecraft:zombified_piglin"]}, "totem_of_undying": {"title": "Postmortal", "desc": "Use a Totem of Undying to cheat death", "icon": {"type": "item", "name": "totem_of_undying", "ench": false}, "criteria": ["used_totem"]}, "summon_iron_golem": {"title": "Hired Help", "desc": "Summon an Iron Golem to help defend a village", "icon": {"type": "block", "name": "carved_pumpkin", "ench": false}, "criteria": ["summoned_golem"]}, "two_birds_one_arrow": {"title": "Two Birds, One Arrow", "desc": "Kill two Phantoms with a piercing arrow", "icon": {"type": "item", "name": "crossbow", "ench": false}, "criteria": ["two_birds"]}, "whos_the_pillager_now": {"title": "Who's the Pillager Now?", "desc": "Give a Pillager a taste of their own medicine", "icon": {"type": "item", "name": "crossbow", "ench": false}, "criteria": ["kill_pillager"]}, "arbalistic": {"title": "Arbalistic", "desc": "Kill five unique mobs with one crossbow shot", "icon": {"type": "item", "name": "crossbow", "ench": false}, "criteria": ["arbalistic"]}, "adventuring_time": {"title": "Adventuring Time", "desc": "Discover every biome", "icon": {"type": "item", "name": "diamond_boots", "ench": false}, "criteria": ["minecraft:badlands", "minecraft:badlands_plateau", "minecraft:bamboo_jungle", "minecraft:bamboo_jungle_hills", "minecraft:beach", "minecraft:birch_forest", "minecraft:birch_forest_hills", "minecraft:cold_ocean", "minecraft:dark_forest", "minecraft:deep_cold_ocean", "minecraft:deep_frozen_ocean", "minecraft:deep_lukewarm_ocean", "minecraft:desert", "minecraft:desert_hills", "minecraft:forest", "minecraft:frozen_river", "minecraft:giant_tree_taiga", "minecraft:giant_tree_taiga_hills", "minecraft:jungle", "minecraft:jungle_edge", "minecraft:jungle_hills", "minecraft:lukewarm_ocean", "minecraft:mountains", "minecraft:mushroom_field_shore", "minecraft:mushroom_fields", "minecraft:plains", "minecraft:river", "minecraft:savanna", "minecraft:savanna_plateau", "minecraft:snowy_beach", "minecraft:snowy_mountains", "minecraft:snowy_taiga", "minecraft:snowy_taiga_hills", "minecraft:snowy_tundra", "minecraft:stone_shore", "minecraft:swamp", "minecraft:taiga", "minecraft:taiga_hills", "minecraft:warm_ocean", "minecraft:wooded_badlands_plateau", "minecraft:wooded_hills", "minecraft:wooded_mountains"]}, "very_very_frightening": {"title": "Very Very Frightening", "desc": "Strike a Villager with lightning", "icon": {"type": "item", "name": "trident", "ench": false}, "criteria": ["struck_villager"]}, "sniper_duel": {"title": "Sniper Duel", "desc": "Kill a Skeleton from at least 50 meters away", "icon": {"type": "item", "name": "arrow", "ench": false}, "criteria": ["killed_skeleton"]}, "bullseye": {"title": "Bullseye", "desc": "Hit the bullseye of a Target block from at least 30 meters away", "icon": {"type": "block", "name": "target", "ench": false}, "criteria": ["bullseye"]}}, 
+    "husbandry": {"root": {"title": "Husbandry", "desc": "The world is full of friends and food", "icon": {"type": "block", "name": "hay_block", "ench": false}, "criteria": ["consumed_item"]}, "safely_harvest_honey": {"title": "Bee Our Guest", "desc": "Use a Campfire to collect Honey from a Beehive using a Bottle without aggravating the bees", "icon": {"type": "item", "name": "honey_bottle", "ench": false}, "criteria": ["safely_harvest_honey"]}, "breed_an_animal": {"title": "The Parrots and the Bats", "desc": "Breed two animals together", "icon": {"type": "item", "name": "wheat", "ench": false}, "criteria": ["bred"]}, "tame_an_animal": {"title": "Best Friends Forever", "desc": "Tame an animal", "icon": {"type": "item", "name": "lead", "ench": false}, "criteria": ["tamed_animal"]}, "fishy_business": {"title": "Fishy Business", "desc": "Catch a fish", "icon": {"type": "item", "name": "fishing_rod", "ench": false}, "criteria": ["cod", "pufferfish", "salmon", "tropical_fish"]}, "silk_touch_nest": {"title": "Total Beelocation", "desc": "Move a Bee Nest, with 3 bees inside, using Silk Touch", "icon": {"type": "block", "name": "bee_nest", "ench": false}, "criteria": ["silk_touch_nest"]}, "plant_seed": {"title": "A Seedy Place", "desc": "Plant a seed and watch it grow", "icon": {"type": "item", "name": "wheat", "ench": false}, "criteria": ["beetroots", "melon_stem", "nether_wart", "pumpkin_stem", "wheat"]}, "bred_all_animals": {"title": "Two by Two", "desc": "Breed all the animals!", "icon": {"type": "item", "name": "golden_carrot", "ench": false}, "criteria": ["minecraft:bee", "minecraft:cat", "minecraft:chicken", "minecraft:cow", "minecraft:donkey", "minecraft:fox", "minecraft:hoglin", "minecraft:horse", "minecraft:llama", "minecraft:mooshroom", "minecraft:mule", "minecraft:ocelot", "minecraft:panda", "minecraft:pig", "minecraft:rabbit", "minecraft:sheep", "minecraft:strider", "minecraft:turtle", "minecraft:wolf"]}, "complete_catalogue": {"title": "A Complete Catalogue", "desc": "Tame all cat variants!", "icon": {"type": "item", "name": "cod", "ench": false}, "criteria": ["textures/entity/cat/all_black.png", "textures/entity/cat/black.png", "textures/entity/cat/british_shorthair.png", "textures/entity/cat/calico.png", "textures/entity/cat/jellie.png", "textures/entity/cat/persian.png", "textures/entity/cat/ragdoll.png", "textures/entity/cat/red.png", "textures/entity/cat/siamese.png", "textures/entity/cat/tabby.png", "textures/entity/cat/white.png"]}, "tactical_fishing": {"title": "Tactical Fishing", "desc": "Catch a fish... without a fishing rod!", "icon": {"type": "item", "name": "pufferfish_bucket", "ench": false}, "criteria": ["cod_bucket", "pufferfish_bucket", "salmon_bucket", "tropical_fish_bucket"]}, "balanced_diet": {"title": "A Balanced Diet", "desc": "Eat everything that is edible, even if it's not good for you", "icon": {"type": "item", "name": "apple", "ench": false}, "criteria": ["apple", "baked_potato", "beef", "beetroot", "beetroot_soup", "bread", "carrot", "chicken", "chorus_fruit", "cod", "cooked_beef", "cooked_chicken", "cooked_cod", "cooked_mutton", "cooked_porkchop", "cooked_rabbit", "cooked_salmon", "cookie", "dried_kelp", "enchanted_golden_apple", "golden_apple", "golden_carrot", "honey_bottle", "melon_slice", "mushroom_stew", "mutton", "poisonous_potato", "porkchop", "potato", "pufferfish", "pumpkin_pie", "rabbit", "rabbit_stew", "rotten_flesh", "salmon", "spider_eye", "suspicious_stew", "sweet_berries", "tropical_fish"]}, "obtain_netherite_hoe": {"title": "Serious Dedication", "desc": "Use a Netherite ingot to upgrade a hoe, and then reevaluate your life choices", "icon": {"type": "item", "name": "netherite_hoe", "ench": false}, "criteria": ["netherite_hoe"]}}
   }
 }
+
+//
+//
+// MC ADVANCEMENT VIEW
+//
+//
 
 const advancementCategories = ["story", "nether", "end", "adventure", "husbandry"] as const;
 type AdvancementCategory = typeof advancementCategories[number];
@@ -161,9 +235,9 @@ class MCAdvancementView extends HTMLElement {
     //Advancement 26px Gap 2px, Advancement = 2 col + 1 Gap, hence Col = x*12px and Gap = x*2px.
     //x=4 for width=1000px
     mainGrid.style.display = "inline-grid";
-    mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},48px)`;
-    mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},48px)`;
-    mainGrid.style.gap = "8px";
+    mainGrid.style.gridTemplateRows = `repeat(${this.templateSizes[category].rows},${String(12*pixelSize)}px)`;
+    mainGrid.style.gridTemplateColumns = `repeat(${this.templateSizes[category].columns},${String(12*pixelSize)}px)`;
+    mainGrid.style.gap = `${String(2*pixelSize)}px`;
     for (const advancementName in this.advancementTemplates[category]) {
       const advTemplate = this.advancementTemplates[category][advancementName];
       mainGrid.appendChild(this.createAdvancement(category, advancementName, advTemplate.row, advTemplate.col, advTemplate.type));
@@ -181,10 +255,8 @@ class MCAdvancementView extends HTMLElement {
     return advancementElement;
   }
 
-  //Optimize:false is to render coords list every time
-  //Optimize:true is to use a pre rendered list of coords generated for col width 48 and gap 8
   //clean this up
-  private generateUnderlaySVG(category: AdvancementCategory, optimise: boolean) {
+  private generateUnderlaySVG(category: AdvancementCategory) {
     const svgEle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgEle.style.position = "absolute";
     svgEle.innerHTML += `<style>${this.svgStyling}</style>`;
@@ -244,13 +316,14 @@ class MCAdvancementView extends HTMLElement {
       this.style.display = "block";
       this.style.textAlign = "center";
       this.style.backgroundImage = `url("./img/gui/${category}_background.png")`;
-      this.style.backgroundSize = "64px";
-      this.style.padding = "8px";
+      this.style.backgroundSize = `${String(16*pixelSize)}px`;
+      this.style.padding = `${String(2*pixelSize)}px`;
+
       const advancementView = this.generateAdvancementDiv(category as AdvancementCategory);
       this.appendChild(advancementView);
       const cachedSVGEle = this.cachedSVGs[category as AdvancementCategory];
       if (cachedSVGEle == null) {
-        const svgEle = this.generateUnderlaySVG(category as AdvancementCategory,false);
+        const svgEle = this.generateUnderlaySVG(category as AdvancementCategory);
         this.insertBefore(svgEle,this.querySelector("mc-advancement-view>div"));
         this.cachedSVGs[category as AdvancementCategory] = svgEle
       } else {
@@ -261,9 +334,7 @@ class MCAdvancementView extends HTMLElement {
 
   //When element is added to DOM
   connectedCallback() {
-    if (this.firstTime)
-      this.firstTime = false;
-    console.log("connectedCallback");
+    if (this.firstTime) {this.firstTime = false};
 
     const viewStyle = document.createElement("style");
     viewStyle.innerHTML = this.advancementStyling;
@@ -277,7 +348,6 @@ class MCAdvancementView extends HTMLElement {
 
   //When an attribute is changed (IT SEEMS LIKE WHEN TAG IS CREATED, CONSTRUCTOR->ATTRIBUTES->CONNECTED)
   attributeChangedCallback(name: string, _: never, newValue: string) {
-    console.log("attributeChangedCallback");
     if (name == "category" && !this.firstTime) {
       const category = newValue;
       this.updateElement(category);
@@ -300,6 +370,7 @@ class MCAdvancementView extends HTMLElement {
     husbandry: {rows: 13, columns: 6}
   };
 
+  //filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
   //ALL SIZING WILL BE REDONE AND THIS IS STILL BASIC STYLING
   private readonly advancementStyling = `
     mc-advancement {
@@ -307,7 +378,7 @@ class MCAdvancementView extends HTMLElement {
       padding: 20px;
       background-size: cover;
       background-image: url(./img/gui/advancement-normal.png);
-      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
+      position: relative;
     }
 
     mc-advancement[type="challenge"] {
@@ -329,6 +400,12 @@ class MCAdvancementView extends HTMLElement {
     mc-advancement[done="true"][type="challenge"] {
       background-image: url(./img/gui/advancement-challenge-done.png);
     }
+
+    mc-advancement-view>div {
+      filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.7));
+      position: relative;
+      z-index: 0;
+    }
   `
 
   private readonly svgStyling = `
@@ -340,15 +417,21 @@ class MCAdvancementView extends HTMLElement {
 
     line#black, polyline#black {
       stroke: rgb(0,0,0);
-      stroke-width: 12;
+      stroke-width: ${String(3*pixelSize)};
     }
 
     line#white, polyline#white {
       stroke: rgb(255,255,255);
-      stroke-width: 4;
+      stroke-width: ${String(pixelSize)};
     }
   `
 }
+
+//
+//
+// MC ITEM ICON
+//
+//
 
 const webRoot = `${(document.currentScript as HTMLScriptElement).src}/../../`;
 const currentResourcePack = "vanilla";
@@ -599,6 +682,220 @@ class MCItemIcon extends HTMLElement {
   }
 }
 
+//
+//
+// MC TOOLTIP FAST
+//
+//
+
+class MCTooltipFast extends HTMLElement {
+  constructor() {
+    super();
+  }
+}
+
+//
+//
+// MC TOOLTIP FANCY
+//
+//
+
+class MCTooltipFancy extends HTMLElement {
+  private shadow: ShadowRoot = this.attachShadow({mode: "closed"});
+  private headerDiv = document.createElement("div");
+  private titleDiv = document.createElement("div");
+  private descriptionDiv = document.createElement("div");
+  private detailsDiv = document.createElement("div");
+  private detailsDivContent: string | HTMLElement = "Sample Details";
+  private storedParent: HTMLElement | null = null;
+  private storedParentInitialZIndex: string = "";
+  private storedParentInitialPosition: string = "";
+  private mouseEnterFunc = ()=>{ this.style.visibility = "visible";this.storedParent!.style.zIndex = ""; };
+  private mouseLeaveFunc = ()=>{ this.style.visibility = "hidden";this.storedParent!.style.zIndex = "-2";this.closeDetails(); };
+  private clickFunc = ()=>{ if (this.detailsOpen) {this.closeDetails();} else {this.openDetails();} };
+  private detailsOpen: Boolean = false;
+
+  // Needed for attributeChangedCallback
+  static get observedAttributes() {
+    return ["done","type"];
+  }
+
+  set setTitleText(text: string) {this.titleDiv.innerText = text}
+  set setDescriptionText(text: string) {this.descriptionDiv.innerText = text}
+  set setDetailsContent(contents: string | HTMLElement) {this.detailsDivContent = contents}
+  get getDetailsContent() {return this.detailsDivContent}
+  get getDetailsDiv() {return this.detailsDiv}
+
+  private updateSelf() {
+    const doneValue = this.getAttribute("done");
+    const cateValue = this.getAttribute("type");
+    if (doneValue != null) { this.headerDiv.setAttribute("done",""); } else { this.headerDiv.removeAttribute("done"); }
+    if (cateValue == "challenge") { this.descriptionDiv.setAttribute("challenge",""); } else { this.descriptionDiv.removeAttribute("challenge"); }
+  }
+
+  private setupParent() {
+    if (this.storedParent != null) {
+      this.storedParent.style.zIndex = "-2";
+      this.storedParent.style.position = "relative";
+      this.storedParent.addEventListener("mouseenter", this.mouseEnterFunc);
+      this.storedParent.addEventListener("mouseleave", this.mouseLeaveFunc);
+      this.storedParent.addEventListener("click", this.clickFunc);
+    }
+  }
+
+  private clearParent() {
+    if (this.storedParent != null) {
+      this.storedParent.style.zIndex = this.storedParentInitialZIndex;
+      this.storedParent.style.position = this.storedParentInitialPosition;
+      this.storedParent.removeEventListener("mouseenter", this.mouseEnterFunc);
+      this.storedParent.removeEventListener("mouseleave", this.mouseLeaveFunc);
+      this.storedParent.removeEventListener("click", this.clickFunc);
+    }
+  }
+
+  openDetails() {
+    this.detailsOpen = true;
+    this.detailsDiv.style.fontStyle = "";
+    this.detailsDiv.style.color = "";
+    this.detailsDiv.style.textAlign = "";
+    this.style.pointerEvents = "";
+    if (typeof(this.detailsDivContent) == "string") {
+      this.detailsDiv.innerHTML = this.detailsDivContent;
+    } else {
+      this.detailsDiv.innerHTML = "";
+      this.detailsDiv.appendChild(this.detailsDivContent);
+    }
+  }
+
+  closeDetails() {
+    this.detailsOpen = false;
+    this.detailsDiv.style.color = "#AAAAAA";
+    this.detailsDiv.style.fontStyle = "oblique";
+    this.detailsDiv.style.textAlign = "left";
+    this.detailsDiv.innerHTML = "Click For More...";
+    this.style.pointerEvents = "none";
+  }
+
+  constructor() {
+    super();
+    const styleEle = document.createElement("style");
+    const parentDiv = document.createElement("div");
+
+    parentDiv.id = "parent"
+    this.headerDiv.id = "header";
+    this.titleDiv.id = "title";
+    this.descriptionDiv.id = "description";
+    this.detailsDiv.id = "details"
+    styleEle.textContent = this.styling;
+
+    this.headerDiv.append(this.titleDiv);
+    parentDiv.append(this.headerDiv,this.descriptionDiv,this.detailsDiv);
+    this.shadow.append(styleEle,parentDiv);
+
+    this.setTitleText = "Sample Title";
+    this.setDescriptionText = "Sample Description";
+    this.closeDetails();
+  }
+
+  connectedCallback () {
+    this.storedParent = this.parentElement;
+    this.storedParentInitialZIndex = (this.storedParent != null) ? this.storedParent.style.zIndex : "";
+    this.storedParentInitialPosition = (this.storedParent != null) ? this.storedParent.style.position : "";
+    this.style.display = "inline-block";
+    this.style.visibility = "hidden";
+    this.style.position = "absolute";
+    this.style.left = "-12px";
+    this.style.top = "12px";
+    this.style.zIndex = "-1";
+
+    this.updateSelf();
+    this.setupParent();
+  }
+
+  attributeChangedCallback() {
+    this.updateSelf();
+  }
+
+  disconnectedCallback() {
+    this.clearParent();
+  }
+
+  private styling = `
+    div {
+      font-size: ${String(8*pixelSize)}px;
+      line-height: ${String(8*pixelSize)}px;
+      text-align: left;
+    }
+
+    div#parent {
+      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;
+      border-width: ${String(2*pixelSize)}px;
+      border-style: solid;
+    }
+
+    div#header {
+      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;
+      border-width: ${String(2*pixelSize)}px;
+      border-style: solid;
+      color: white; 
+      margin: -${String(2*pixelSize)}px;
+    }
+
+    div#header[done] {
+      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;
+    }
+
+    div#header>div {
+      display: inline-block;
+    }
+
+    div#filler {
+      width: ${String(26*pixelSize)}px;
+    }
+
+    div#title {
+      padding: ${String(4*pixelSize)}px;
+      text-shadow: ${String(pixelSize*0.75)}px ${String(pixelSize*0.75)}px #3E3E3E;
+      width: max-content;
+      margin-left: ${String(26*pixelSize)}px;
+    }
+
+    div#description {
+      color: #54FC54;
+      text-shadow: none;
+      padding: ${String(4*pixelSize)}px ${String(2*pixelSize)}px ${String(2*pixelSize)}px;
+    }
+
+    div#description[challenge] {
+      color: #A800A8;
+    }
+
+    div#details {
+      text-shadow: none;
+      padding: ${String(4*pixelSize)}px ${String(2*pixelSize)}px ${String(2*pixelSize)}px;
+    }
+
+    ul {
+      list-style-type: none;
+      margin: 0px;
+      padding: 0px;
+    }
+
+    ul>li {
+      text-indent: ${String(3*pixelSize)}px
+    }
+
+    ul>li:before {
+      content: "-";
+    }
+
+    li[done] {
+      color: #55FFFF;
+    }
+  `
+}
+
+customElements.define('mc-tooltip-fancy', MCTooltipFancy);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);
