@@ -188,3 +188,10 @@ class AdvancementsAPI extends CacheManager {
         this.storage.setItem("meta.lastupdated:advancements", serverUpdateTimestamp);
     }
 }
+window.addEventListener("error", (e)=>{
+    let txt = e.message;
+    if (e.message.includes("Unexpected token '='. Expected an opening '(' before a method's parameter list.")) {
+        txt += "\n\nRemember not to use static properties on iOS.";
+    }
+    alert("Page Error:\n" + `${new URL(e.filename).pathname}:${e.lineno}:${e.colno}\n\n` + txt);
+});

@@ -46,7 +46,7 @@ const pixelSize = 4;
 
 class MCAdvancement extends HTMLElement {
   
-  private static advancementAttributes = ['col','row','ns','done','type'] as const;
+  private static get advancementAttributes() { return ['col','row','ns','done','type'] as const };
   
   // Needed for attributeChangedCallback
   static get observedAttributes() {

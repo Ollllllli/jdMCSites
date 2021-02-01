@@ -24,13 +24,15 @@ function generateSelect(keyValue) {
 }
 const pixelSize = 4;
 class MCAdvancement extends HTMLElement {
-    static advancementAttributes = [
-        'col',
-        'row',
-        'ns',
-        'done',
-        'type'
-    ];
+    static get advancementAttributes() {
+        return [
+            'col',
+            'row',
+            'ns',
+            'done',
+            'type'
+        ];
+    }
     // Needed for attributeChangedCallback
     static get observedAttributes() {
         return MCAdvancement.advancementAttributes;

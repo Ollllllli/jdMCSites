@@ -510,6 +510,7 @@ class CSSRenderer extends HTMLElement {
         image-rendering: pixelated;
         image-rendering: crisp-edges;
         backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
       }
     `;
     // this.style.boxShadow = "0px 0px 2px 4px #0ff";
