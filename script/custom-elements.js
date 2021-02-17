@@ -2430,9 +2430,112 @@ class MCItemIcon extends HTMLElement {
 //
 //
 class MCTooltipFast extends HTMLElement {
+    shadow = this.attachShadow({
+        mode: "closed"
+    });
+    headerDiv = document.createElement("div");
+    titleDiv = document.createElement("div");
+    descriptionDiv = document.createElement("div");
+    storedParent = null;
+    mouseEnterFunc = ()=>{
+        this.style.visibility = "visible";
+    };
+    mouseLeaveFunc = ()=>{
+        this.style.visibility = "hidden";
+        this.style.top = "";
+        this.style.left = "";
+    };
+    mouseMoveFunc = (e)=>{
+        if (this.storedParent != null) {
+            const x = e.clientX - this.storedParent.getBoundingClientRect().x;
+            const y = e.clientY - this.storedParent.getBoundingClientRect().y;
+            console.log(x);
+            console.log(y);
+            this.style.top = String(y) + "px";
+            this.style.left = String(x) + "px";
+        }
+    };
+    // Needed for attributeChangedCallback
+    static get observedAttributes() {
+        return [
+            "tier"
+        ];
+    }
+    set setTitleText(text) {
+        this.titleDiv.innerText = text;
+    }
+    set setDescriptionText(text) {
+        this.descriptionDiv.innerText = text;
+    }
+    updateSelf() {
+        const tierValue = this.getAttribute("tier");
+        if (tierValue != null) {
+            switch(tierValue){
+                case "uncommon":
+                    this.titleDiv.style.color = "#FFFF55";
+                    break;
+                case "rare":
+                    this.titleDiv.style.color = "#55FFFF";
+                    break;
+                case "epic":
+                    this.titleDiv.style.color = "#FF55FF";
+                    break;
+                case "ominous":
+                    this.titleDiv.style.color = "#FFAA00";
+                    break;
+                default:
+                    this.titleDiv.style.color = "#FFFFFF";
+                    break;
+            }
+        } else {
+            this.titleDiv.style.color = "#FFFFFF";
+        }
+    }
+    setupParent() {
+        if (this.storedParent != null) {
+            this.storedParent.addEventListener("mouseenter", this.mouseEnterFunc);
+            this.storedParent.addEventListener("mouseleave", this.mouseLeaveFunc);
+            this.storedParent.addEventListener("mousemove", this.mouseMoveFunc);
+        }
+    }
+    clearParent() {
+        if (this.storedParent != null) {
+            this.storedParent.removeEventListener("mouseenter", this.mouseEnterFunc);
+            this.storedParent.removeEventListener("mouseleave", this.mouseLeaveFunc);
+            this.storedParent.removeEventListener("mousemove", this.mouseMoveFunc);
+        }
+    }
     constructor(){
         super();
+        const styleEle = document.createElement("style");
+        const parentDiv = document.createElement("div");
+        parentDiv.id = "parent";
+        this.headerDiv.id = "header";
+        this.titleDiv.id = "title";
+        this.descriptionDiv.id = "description";
+        styleEle.textContent = this.styling;
+        this.headerDiv.append(this.titleDiv);
+        parentDiv.append(this.headerDiv, this.descriptionDiv);
+        this.shadow.append(styleEle, parentDiv);
+        this.setTitleText = "Sample Title";
+        this.setDescriptionText = "Sample Description";
     }
+    connectedCallback() {
+        this.storedParent = this.parentElement;
+        this.style.display = "inline-block";
+        this.style.visibility = "hidden";
+        this.style.position = "relative";
+        this.style.pointerEvents = "none";
+        this.updateSelf();
+        this.setupParent();
+    }
+    attributeChangedCallback() {
+        this.updateSelf();
+    }
+    disconnectedCallback() {
+        this.clearParent();
+    }
+    styling = `\n    div {\n      font-size: ${String(8 * pixelSize)}px;\n      line-height: ${String(8 * pixelSize)}px;\n      text-align: left;\n    }\n\n    div#parent {\n      border-image: url(../img/gui/tooltip-fast.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n    }\n\n    div#header>div {\n      display: inline-block;\n    }\n\n    div#title {\n      padding: ${String(2 * pixelSize)}px;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #3E3E3E;\n      width: max-content;\n    }\n\n    div#description {\n      color: #AAAAAA;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #2A2A2A;\n      padding: ${String(2 * pixelSize)}px;\n    }\n  `;
 }
 //
 //
@@ -2582,6 +2685,7 @@ class MCTooltipFancy extends HTMLElement {
     styling = `\n    div {\n      font-size: ${String(8 * pixelSize)}px;\n      line-height: ${String(8 * pixelSize)}px;\n      text-align: left;\n    }\n\n    div#parent {\n      border-image: url(../img/gui/tooltip-fancy-content.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n    }\n\n    div#header {\n      border-image: url(../img/gui/tooltip-fancy-header-blue.png) 2 fill;\n      border-width: ${String(2 * pixelSize)}px;\n      border-style: solid;\n      color: white; \n      margin: -${String(2 * pixelSize)}px;\n    }\n\n    div#header[done] {\n      border-image: url(../img/gui/tooltip-fancy-header-orange.png) 2 fill;\n    }\n\n    div#header>div {\n      display: inline-block;\n    }\n\n    div#filler {\n      width: ${String(26 * pixelSize)}px;\n    }\n\n    div#title {\n      padding: ${String(4 * pixelSize)}px;\n      text-shadow: ${String(pixelSize * 0.75)}px ${String(pixelSize * 0.75)}px #3E3E3E;\n      width: max-content;\n      margin-left: ${String(26 * pixelSize)}px;\n    }\n\n    div#description {\n      color: #54FC54;\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    div#description[challenge] {\n      color: #A800A8;\n    }\n\n    div#details {\n      text-shadow: none;\n      padding: ${String(4 * pixelSize)}px ${String(2 * pixelSize)}px ${String(2 * pixelSize)}px;\n    }\n\n    ul {\n      list-style-type: none;\n      margin: 0px;\n      padding: 0px;\n    }\n\n    ul>li {\n      text-indent: ${String(3 * pixelSize)}px\n    }\n\n    ul>li:before {\n      content: "-";\n    }\n\n    li[done] {\n      color: #55FFFF;\n    }\n  `;
 }
 customElements.define('mc-tooltip-fancy', MCTooltipFancy);
+customElements.define('mc-tooltip-fast', MCTooltipFast);
 customElements.define('mc-advancement', MCAdvancement);
 customElements.define('mc-advancement-view', MCAdvancementView);
 customElements.define('mc-item-icon', MCItemIcon);
